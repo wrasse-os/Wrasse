@@ -123,11 +123,12 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
         fedora_prerelease=$(.github/scripts/resolve-lines.sh prerelease "${tag}")
     fi
 
-    # Base image: plain Fedora Silverblue from quay.io (config: "base_image" in the build matrix). Resolve the
-    # digest once and build from the digest. If the tag for this Fedora version does not exist, fail closed so
-    # this cell pushes nothing. Fedora publishes no cosign or sigstore signature for this repository (checked:
-    # no .sig tag, no OCI referrers, no lookaside), so the digest pin below is the only integrity control.
+    # Base image: Fedora's own Silverblue bootc image (config: "base_image" in the build matrix). The floating
+    # <fedora> tag always points at the newest compose (it equals the newest dated <fedora>.<date>.<n> tag), so
+    # resolve it to a digest once, cosign-verify that digest with Fedora's published key, and build from the
+    # digest. A missing tag or a failed verification fails closed, so this cell pushes nothing.
     base_image=$(jq -er '.base_image' .github/build-matrix.json)
+    base_image_key=$(jq -er '.base_image_key' .github/build-matrix.json)
     if ! base_image_sha=$(skopeo inspect --retry-times 3 --format '{{ '{{.Digest}}' }}' docker://"${base_image}":"${fedora_version}"); then
         echo "::error::${base_image}:${fedora_version} does not exist; refusing to build this cell." >&2
         exit 1
@@ -136,6 +137,7 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
         echo "::error::Unexpected base image digest '${base_image_sha}'." >&2
         exit 1
     fi
+    {{ just }} verify-container "${base_image##*/}@${base_image_sha}" "${base_image%/*}" "${base_image_key}"
     # Inspect the digest, not the tag, so the checks below describe exactly what gets built.
     base_json=$(skopeo inspect --retry-times 3 docker://"${base_image}"@"${base_image_sha}")
     # The tag must really be this Fedora release: never Rawhide (46 is Rawhide today), never a mislabeled image.
@@ -143,6 +145,12 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
     base_version=$(jq -r '.Labels["org.opencontainers.image.version"] // ""' <<<"${base_json}")
     if [[ "${base_kernel}" != *".fc${fedora_version}."* || "${base_version}" != "${fedora_version}."* ]]; then
         echo "::error::${base_image}:${fedora_version} is not Fedora ${fedora_version} (ostree.linux='${base_kernel}', version='${base_version}'); refusing to build this cell." >&2
+        exit 1
+    fi
+    # Rawhide must never be built, whatever the tag says (today 46 is Rawhide and shares its digest).
+    rawhide_sha=$(skopeo inspect --retry-times 3 --format '{{ '{{.Digest}}' }}' docker://"${base_image}":rawhide)
+    if [[ "${base_image_sha}" == "${rawhide_sha}" ]]; then
+        echo "::error::${base_image}:${fedora_version} is Rawhide; refusing to build this cell." >&2
         exit 1
     fi
 

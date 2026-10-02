@@ -1,5 +1,6 @@
 {
-  "base_image": "quay.io/fedora/fedora-silverblue",
+  "base_image": "quay.io/fedora-ostree-desktops/silverblue",
+  "base_image_key": ".github/keys/quay.io-fedora-ostree-desktops.pub",
   "lines": {
     "reimagined": {
       "akmods_flavor": "main",

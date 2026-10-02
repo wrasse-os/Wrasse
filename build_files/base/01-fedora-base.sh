@@ -4,7 +4,7 @@ echo "::group:: ===$(basename "$0")==="
 
 set -eoux pipefail
 
-# Wrasse builds FROM plain Fedora Silverblue (quay.io/fedora/fedora-silverblue), not ghcr.io/ublue-os/silverblue-main.
+# Wrasse builds FROM Fedora Silverblue (quay.io/fedora-ostree-desktops/silverblue), not ghcr.io/ublue-os/silverblue-main.
 # This script reproduces only what ublue-os/main (build_files/install.sh, packages.sh, post-install.sh and its
 # sys_files) put on top of Fedora AND that survives into this repo's final image. Things the ublue-os-* RPMs
 # shipped (ujust, policy.json and registries.d, update services, udev rules, luks helpers) are not here: this repo

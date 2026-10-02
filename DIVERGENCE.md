@@ -32,12 +32,14 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
   (`akmods`, `akmods-nvidia-open`, `akmods-zfs` for coreos) is resolved once, cosign-verified, passed as `AKMODS_*_DIGEST` build
   args and copied by `@sha256:`. No tag is re-resolved inside the build (the TOCTOU in projectbluefin issue #1264). A missing image or
   failed verification fails that cell before any push.
-- The base image is `quay.io/fedora/fedora-silverblue:<fedora>` (plain Fedora, user decision), for every line. `base_image` in
-  `.github/build-matrix.json` is the single place to change it. `just build` resolves the tag to a digest once and builds
-  `@sha256:`; it inspects that digest and refuses a base whose `ostree.linux`/version label is not the requested Fedora release
-  (so Rawhide, now tag `46`, can never be used). Fedora publishes no cosign or sigstore signature for this repository, so there is
-  no signature check for the base (the akmods and brew images are still cosign-verified); the digest pin is the control. A missing
-  tag fails that cell closed. The `silverblue-main-NN` pins and the ublue cosign check of the base are gone.
+- The base image is `quay.io/fedora-ostree-desktops/silverblue:<fedora>` (Fedora's own bootc Silverblue, user decision), for every line.
+  `base_image` and `base_image_key` in `.github/build-matrix.json` are the one place to change it. `just build` resolves the floating
+  tag to a digest once (it equals the newest dated `<fedora>.<date>.<n>` tag), cosign-verifies that digest with Fedora's key
+  (`.github/keys/quay.io-fedora-ostree-desktops.pub`, from gitlab.com/fedora/ostree/ci-test, same key as in the quay signature
+  bundle) and builds `@sha256:`. It then inspects the digest and refuses a base whose `ostree.linux`/version label is not the requested
+  release or whose digest equals the `rawhide` tag (Rawhide is tag `46` today). A missing tag or failed verification fails that cell
+  closed. The `silverblue-main-NN` pins and the ublue cosign check of the base are gone. (`quay.io/fedora/fedora-silverblue` was
+  tried first; it has no signature.)
 - `build_files/base/01-fedora-base.sh` (run before the kernel swap) reproduces what ublue-os/main added on top of Fedora and the
   image still depends on: negativo17 `fedora-multimedia` at priority 90 with the mesa/libva/intel overrides (versionlocked),
   main's `packages.json` package set (ffmpeg, codecs, distrobox, ptyxis, fzf, htop, nvtop, udev rule packages, ...),

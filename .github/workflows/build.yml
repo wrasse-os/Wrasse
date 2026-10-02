@@ -157,7 +157,7 @@ jobs:
           path: /var/tmp/buildah-cache-*
           key: ${{ runner.os }}-${{ runner.arch }}-buildah-${{ env.CACHE_NAME }}
 
-      # Fails closed: `just build` exits non-zero when the base (quay.io/fedora/fedora-silverblue) or
+      # Fails closed: `just build` exits non-zero when the base (quay.io/fedora-ostree-desktops/silverblue) or
       # akmods image for this Fedora version/kernel is missing, the base is not that release, or
       # akmods cosign verification fails. Every later step
       # (including every push) is skipped, so this cell's tag keeps the last good image.
