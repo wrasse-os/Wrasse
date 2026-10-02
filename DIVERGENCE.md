@@ -26,3 +26,10 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
   were never in the tree. The build-tool `dnf` list in `build-gnome-extensions.sh` is unchanged (not yet
   verified which tools are now unused).
 - `10-theming.sh`: moved the `SYS_ID` assignment above its first use (it was read before being set).
+
+## Flatpaks
+
+- **Removed default Flatpaks** Firefox, Thunderbird and DejaDup from `system-flatpaks.Brewfile`, plus the
+  Firefox system-config hook (`privileged-setup.hooks.d/99-flatpaks.sh`, `firefox-config/`) that only
+  served Firefox. Font Downloader was not in the list. Bazaar's curated "Browsers" section still lists Firefox
+  as a store suggestion, not a default.
