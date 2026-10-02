@@ -32,7 +32,7 @@ One git branch, several image tags. Each line is built for both images.
 | `reimagined` | newest branched Fedora (never Rawhide) | With no branched release it follows `next`. |
 
 There is no LTS or GTS line. Versions are resolved by CI (`docs/CI.md`). Images are built from Fedora's own
-`quay.io/fedora/fedora-silverblue:<version>`, so beta and branched lines build as soon as Fedora publishes the tag. One open
+`quay.io/fedora-ostree-desktops/silverblue:<version>` (cosign-verified), so beta and branched lines build as soon as Fedora publishes the tag. One open
 decision remains: whether `reimagined` has an NVIDIA image.
 
 ## Rebase an existing bootc system

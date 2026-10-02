@@ -86,7 +86,7 @@ Release lines:
 
 GPU flavors: default (Mesa) and nvidia (open driver only, Turing+). Image names: `wrasse` and `wrasse-nvidia`. 6 images total.
 
-- Resolve each line's Fedora version automatically in CI. Base image: `quay.io/fedora/fedora-silverblue:<version>` for all lines
+- Resolve each line's Fedora version automatically in CI. Base image: `quay.io/fedora-ostree-desktops/silverblue:<version>` for all lines
   (user decision, see the Phase 2 status notes); ublue's base images do not publish branched Fedora.
 - akmods security: resolve each akmods image digest once, cosign-verify it, then pull by `@sha256:` everywhere. Never
   re-resolve mutable tags inside the build (fixes the TOCTOU issue reported against projectbluefin, issue #1264).
@@ -110,18 +110,17 @@ so next = reimagined = 45.
 **Finding: ublue base images do not publish branched Fedora.** `ghcr.io/ublue-os/silverblue-main` had only tags `43`, `44` while Fedora 45 was
 branched and in beta. `quay.io/fedora/fedora-silverblue` has `44`, `45`, `46` (46 is Rawhide).
 
-**Resolved (user decision, 2026-10-03): the base is `quay.io/fedora/fedora-silverblue:<version>` for every line**, not `silverblue-main`.
-Verified on 2026-10-03 (`skopeo`): tags `44`/`latest` = `44.20261002.0`, `45` = `45.20261001.n.0` (kernel `7.2.8-300.fc45`), `46`/`rawhide` =
-`Rawhide.20261002.n.0`. Labels: `containers.bootc=1`, `ostree.linux`, `org.opencontainers.image.version`; no label or tag says alpha, beta or
-stable (the `.n.` in the version is a nightly compose marker, not a stability marker), so classification stays with `resolve-lines.sh`
-(Bodhi plus `releases/test/NN_Beta/`) and `just build` checks `ostree.linux` contains `.fc<version>.` and the version label starts with
-`<version>.`, which rejects Rawhide. This repository has dated tags only for 41 to 43 (stale); 44 to 46 are floating tags. Upstream
-ublue-os/main itself builds from `quay.io/fedora-ostree-desktops/silverblue` (fresh dated tags), not `fedora-silverblue`; `base_image` in
-`.github/build-matrix.json` switches it in one line. Signatures: no `.sig` tag, no OCI referrers, no sigstore lookaside on quay.io; the base is
-pinned by digest resolved once, with no signature verification (nothing invented). Missing tag: the cell fails closed. What `silverblue-main`
-added is reproduced in `build_files/base/01-fedora-base.sh` (see `DIVERGENCE.md`). Unverified without a CI build: the whole script (package
-installs against Fedora plus negativo17, `distro-sync` overrides, dnf5 presence in the base, kernel-install stubs in `03-install-kernel-akmods.sh`),
-whether negativo17 stays complete for branched Fedora, and that nothing else in `silverblue-main` (for example the `rm /usr/bin/chsh`) mattered.
+**Resolved (user decision, 2026-10-03): the base is Fedora's own Silverblue bootc image for every line, not `silverblue-main`.** First tried
+`quay.io/fedora/fedora-silverblue:<version>`: tags `44`, `45` (`45.20261001.n.0`) and `46`/`rawhide`, labels `containers.bootc`, `ostree.linux`,
+`org.opencontainers.image.version`, but no signature (no `.sig` tag, OCI referrers or lookaside) and stale dated tags, so it was replaced by
+`quay.io/fedora-ostree-desktops/silverblue:<version>` (the one ublue-os/main uses). Checked 2026-10-03: `44` = `44.20261002.0`, `45` =
+`45.20261002.0` (kernel `7.2.8-300.fc45`), `46` = `rawhide` = `46.20261002.0` (Rawhide; never used); dated tags `<fedora>.<date>.<n>`, with the
+floating tag equal to the newest. Cosign signatures verify for 44 and 45 with Fedora's key, vendored in `.github/keys/`. No label says alpha, beta
+or stable, so classification stays with `resolve-lines.sh` (Bodhi plus `releases/test/NN_Beta/`). `just build` resolves the floating tag to a digest
+once, verifies it, checks `ostree.linux` contains `.fc<version>.` and the version label starts with `<version>.`, refuses a digest equal to the
+`rawhide` tag, then builds `@sha256:`. A missing tag or failed verification fails the cell closed. What `silverblue-main` added is reproduced in
+`build_files/base/01-fedora-base.sh` (see `DIVERGENCE.md`). Unverified without a CI build: that script, the kernel-install stubs, and whether
+negativo17 stays complete for branched Fedora.
 
 Other blocked or open items:
 - `reimagined` nvidia and `reimagined` as the feature-first channel: pending decisions 3 and 4 (placeholder noted above).

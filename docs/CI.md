@@ -29,11 +29,13 @@ Any lookup failure fails the `plan` job, so nothing is built from a guessed vers
 ## Fail closed
 
 `just build` resolves the base image and each akmods image to a digest once and builds from the digest. The akmods digests are
-cosign-verified. The base is `quay.io/fedora/fedora-silverblue:<fedora version>` (`base_image` in `.github/build-matrix.json`);
-Fedora publishes no cosign, sigstore lookaside or OCI referrer signature for it, so it is pinned by digest only. The build also
-checks the base's `ostree.linux` and version labels against the requested release, so a Rawhide-aliased tag (`46`, `rawhide`) is
-refused. Whether a line is final, beta or branched still comes from the resolver (Bodhi and `releases/test/NN_Beta/`); the base tag
-only supplies the image, and `FEDORA_PRERELEASE` is set for any non-final version.
+cosign-verified. The base is `quay.io/fedora-ostree-desktops/silverblue:<fedora version>` (`base_image` in `.github/build-matrix.json`).
+Its floating tag is resolved to a digest once and verified with Fedora's published key, vendored at
+`.github/keys/quay.io-fedora-ostree-desktops.pub` (source: `gitlab.com/fedora/ostree/ci-test/-/raw/main/quay.io-fedora-ostree-desktops.pub`).
+The floating tag is used rather than a dated tag because it always equals the newest `<fedora>.<date>.<n>` tag, and the digest pin is what
+makes the build reproducible. The build also checks the base's `ostree.linux` and version labels against the requested release and refuses
+a digest equal to the `rawhide` tag's. Whether a line is final, beta or branched still comes from the resolver (Bodhi and
+`releases/test/NN_Beta/`); the base tag only supplies the image, and `FEDORA_PRERELEASE` is set for any non-final version.
 What the Fedora base lacks compared with ublue's `silverblue-main` is added by `build_files/base/01-fedora-base.sh`.
 
 If an image does not exist for that Fedora version and kernel, or verification fails, the cell exits before any push.
