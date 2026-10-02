@@ -50,6 +50,10 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
   Why: the base is no longer `silverblue-main`. Not reproduced: `ublue-os-just/-luks/-udev-rules/-signing/-update-services` (this
   repo carries its own copies), `fedora-repos-archive`, the on-device `cosign` RPM (excluded in `04-packages.sh`), the
   `rm /usr/bin/chsh`, the staging COPR.
+- The akmods image is now fetched and extracted in `01-fedora-base.sh` (moved out of `03-install-kernel-akmods.sh`, same digest-only rule), which
+  installs `ublue-os-akmods-addons` from it, as ublue-os/main did. That RPM provides `/etc/yum.repos.d/_copr_ublue-os-akmods.repo`,
+  `negativo17-fedora-multimedia.repo` (the file names `03`, `17-cleanup.sh` and `validate-repos.sh` use) and the `akmods-ublue.der` Secure Boot
+  key. Plain Fedora has none of them (first CI run failed in `03` on the missing akmods repo file); the negativo17 repo is no longer added by URL.
 - `03-install-kernel-akmods.sh` stubs kernel-install's `05-rpmostree.install` and `50-dracut.install` while the akmods kernel RPMs install,
   as ublue-os/main does on a plain Fedora base; `19-initramfs.sh` still builds the initramfs. Why: unverified without a build, but main hit
   the failure with the same procedure.

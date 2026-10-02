@@ -14,16 +14,7 @@ for pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-
     rpm --erase $pkg --nodeps
 done
 
-# The akmods images are pulled by digest only. CI resolved and cosign-verified
-# these digests once before the build (just resolve-akmods); never re-resolve a tag here.
-: "${AKMODS_DIGEST:?AKMODS_DIGEST build arg is required}"
-
-# Fetch Common AKMODS & Kernel RPMS
-skopeo copy --retry-times 3 docker://ghcr.io/ublue-os/akmods@"${AKMODS_DIGEST}" dir:/tmp/akmods
-AKMODS_TARGZ=$(jq -r '.layers[].digest' </tmp/akmods/manifest.json | cut -d : -f 2)
-tar -xvzf /tmp/akmods/"$AKMODS_TARGZ" -C /tmp/
-mv /tmp/rpms/* /tmp/akmods/
-# NOTE: kernel-rpms should auto-extract into correct location
+# The akmods image was fetched by digest and extracted to /tmp/akmods and /tmp/kernel-rpms by 01-fedora-base.sh.
 
 # Install Kernel
 # On a plain Fedora base, kernel-install's rpm-ostree and dracut hooks fail inside the container build

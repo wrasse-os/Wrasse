@@ -21,12 +21,25 @@ mkdir -p /var/roothome
 # images are not guaranteed to ship the directory, and the earlier silverblue-main base may have provided it.
 mkdir -p /usr/lib/bootc/kargs.d
 
+# Fetch the common akmods image (kernel RPMs, kmods and the ublue-os addons RPMs). CI resolved and cosign-verified
+# this digest once before the build (just resolve-akmods); never re-resolve a tag here. 03-install-kernel-akmods.sh
+# uses the extracted /tmp/akmods and /tmp/kernel-rpms. (Moved here from 03 because the addons RPM is needed first.)
+: "${AKMODS_DIGEST:?AKMODS_DIGEST build arg is required}"
+skopeo copy --retry-times 3 docker://ghcr.io/ublue-os/akmods@"${AKMODS_DIGEST}" dir:/tmp/akmods
+AKMODS_TARGZ=$(jq -r '.layers[].digest' </tmp/akmods/manifest.json | cut -d : -f 2)
+tar -xvzf /tmp/akmods/"$AKMODS_TARGZ" -C /tmp/
+mv /tmp/rpms/* /tmp/akmods/
+
+# Replaces: main install.sh `dnf5 install /tmp/akmods-rpms/*.rpm`. ublue-os-akmods-addons (built from
+# ublue-os/akmods build_files/common/ublue-os-akmods-addons) ships /etc/pki/akmods/certs/akmods-ublue.der (the
+# Secure Boot key users enroll) and /etc/yum.repos.d/{_copr_ublue-os-akmods,negativo17-fedora-multimedia,
+# _copr_rok-cdemu}.repo, all disabled except the akmods COPR. 03-install-kernel-akmods.sh, 17-cleanup.sh and
+# validate-repos.sh refer to those file names.
+dnf5 -y install /tmp/akmods/ublue-os/ublue-os-akmods-addons*.rpm
+
 # Replaces: main install.sh "use negativo17 for 3rd party packages with higher priority than default".
 # Provides the ffmpeg, fdk-aac, libva and Intel media stack and the less crippled mesa. 17-cleanup.sh and
-# validate-repos.sh disable the repo again before the image is committed.
-if ! dnf5 repolist --all | grep -q fedora-multimedia; then
-    dnf5 config-manager addrepo --from-repofile="https://negativo17.org/repos/fedora-multimedia.repo"
-fi
+# validate-repos.sh disable the repo again before the image is committed. The repo file comes from the addons RPM.
 dnf5 config-manager setopt fedora-multimedia.enabled=1
 dnf5 config-manager setopt fedora-multimedia.priority=90
 
