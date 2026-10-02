@@ -64,6 +64,7 @@ FEDORA_PACKAGES=(
     oddjob-mkhomedir
     opendyslexic-fonts
     openssh-askpass
+    playerctl
     powerstat
     powertop
     printer-driver-brlaser
