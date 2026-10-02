@@ -33,10 +33,9 @@ This document provides essential information for coding agents working with the 
 - `flatpaks/` - Flatpak application lists (system-flatpaks.list, system-flatpaks-dx.list)
 
 ### Architecture
-- **Two Build Targets**: `base` (regular users) and `dx` (developer experience)
-- **Image Flavors**: main, nvidia-open
-- **Fedora Versions**: 42, 43 supported
-- **Stream Tags**: `latest` (F42/43), `beta` (F42/43), `stable` (F42)
+- **Images**: `wrasse` and `wrasse-nvidia` (flavors `default`, `nvidia`); DX is not an image
+- **Fedora Versions**: resolved per release line by `.github/scripts/resolve-lines.sh`
+- **Release lines (tags)**: `reimagined`, `next`, `stable` (see `docs/CI.md`)
 - **Build Process**: Sequential shell scripts in build_files/ directory
 - **Base Images**: Uses `ghcr.io/ublue-os/silverblue-main` as foundation from Universal Blue
 
@@ -78,13 +77,13 @@ just fix    # Only if Just command runner is available
 **Build commands (use with extreme caution - these take 30+ minutes and require significant resources):**
 ```bash
 # Build base image (30-60 minutes, requires 20GB+ disk space)
-just build bluefin latest main
+just build wrasse stable default
 
-# Build developer variant (45-90 minutes, requires 25GB+ disk space)
-just build bluefin-dx latest main
+# Build the nvidia flavor of a line
+just build wrasse reimagined nvidia
 
 # Build with specific kernel pin
-just build bluefin latest main "" "" "" "6.10.10-200.fc40.x86_64"
+just build wrasse stable default "" "" "" "6.10.10-200.fc40.x86_64"
 ```
 
 **Utility commands:**
@@ -96,7 +95,7 @@ just clean
 just --list
 
 # Validate image/tag/flavor combinations (if Just available)
-just validate bluefin latest main
+just validate wrasse stable default
 ```
 
 **Working without Just (when external access is restricted):**
@@ -159,10 +158,7 @@ The repository uses mandatory pre-commit validation:
 **Always run:** `pre-commit run --all-files` before committing changes.
 
 ### GitHub Actions Workflows
-- `build-image-latest-main.yml` - Builds latest images on main branch changes
-- `build-image-stable.yml` - Builds stable release images
-- `build-image-beta.yml` - Builds beta images for testing F42/F43
-- `reusable-build.yml` - Core build logic for all image variants
+- `build.yml` - The single build matrix: release line x GPU flavor, one independent cell each
 - `generate-release.yml` - Generates release artifacts and changelogs
 - `validate-brewfiles.yml` - Validates Homebrew Brewfile syntax
 - `clean.yml` - Cleanup old images and artifacts
@@ -170,10 +166,9 @@ The repository uses mandatory pre-commit validation:
 
 **Workflow Architecture:**
 
-- Stream-specific workflows (stable, latest, beta) call `reusable-build.yml`
-- `reusable-build.yml` builds both base and dx variants for all flavors (main, nvidia-open)
-- Fedora version is dynamically detected based on stream tag
-- Images are signed with cosign and pushed to GHCR
+- `build.yml` runs a `plan` job (resolves Fedora versions, reads `.github/build-matrix.json`) and a `build` matrix
+- Cells fail closed and independently: a failed cell pushes nothing
+- Images are signed with cosign and pushed to GHCR (secrets: `docs/CI-SECRETS.md`)
 
 ### Manual Validation Steps
 1. `pre-commit run --all-files` - Runs validation hooks (2-3 minutes, .devcontainer.json failure is expected)
@@ -250,21 +245,19 @@ The `Justfile` is the central build orchestration tool with these key recipes:
 
 **Image/Tag Definitions:**
 ```bash
-images: bluefin, bluefin-dx
-flavors: main, nvidia-open
-tags: stable, latest, beta
+images: wrasse
+flavors: default, nvidia
+tags: reimagined, next, stable
 ```
 
 **Version Detection:**
-- `just fedora_version <image> <tag> <flavor>` - Dynamically detects Fedora version from upstream base images
-- For `stable`: Checks `quay.io/fedora/fedora-coreos:stable` (CoreOS does not use cosign)
-- For `latest`/`beta`/`gts`: Checks `ghcr.io/ublue-os/base-main:<tag>`
-- A `kernel_pin` overrides the result, taking the version from the `fcNN` portion of the kernel
-- Returns the Fedora major version (e.g., 43, 44)
+- `just fedora_version <image> <tag> <flavor>` - Fedora version of a release line
+- Order: a `kernel_pin` (the `fcNN` part), else `FEDORA_VERSION` from the environment (set by CI), else `.github/scripts/resolve-lines.sh version <line>`
+- The resolver reads Bodhi and the Fedora `releases/test/NN_Beta/` directory; see `docs/CI.md`
 
-Do not assume the streams sit on different Fedora releases. They frequently
-resolve to the same major version, so anything version-dependent must key off
-the value this recipe returns rather than off the stream name.
+Lines can resolve to the same major version (for example `next` and `reimagined` when
+they follow the same beta), so anything version-dependent must key off the value
+this recipe returns rather than off the line name.
 
 ### Containerfile Multi-Stage Build
 The `Containerfile` uses a multi-stage build process:
@@ -273,36 +266,26 @@ The `Containerfile` uses a multi-stage build process:
 2. **Stage `base`** (FROM silverblue-main): Base Bluefin image
    - Mounts build context from `ctx` stage
    - Runs `/ctx/build_files/shared/build.sh` which executes all scripts in order
-3. **Stage `dx`** (optional, in full Containerfile): Developer experience layer
+3. DX is not a stage or an image; it becomes a sysext in a later phase
 
 **Build Arguments:**
 - `BASE_IMAGE_NAME` - Upstream base (silverblue/kinoite)
-- `BASE_IMAGE_SHA` - Digest of the base image, resolved from `image-versions.yml`
-- `FEDORA_MAJOR_VERSION` - Dynamically set by Just (43/44)
-- `IMAGE_NAME` - Target image name (bluefin/bluefin-dx)
-- `KERNEL` - Pinned kernel version (optional)
-- `UBLUE_IMAGE_TAG` - Stream tag (stable/latest/beta)
+- `BASE_IMAGE_SHA` - Digest of the base image, resolved and cosign-verified by `just build`
+- `FEDORA_MAJOR_VERSION` - Dynamically set by Just
+- `FEDORA_PRERELEASE` - `1` when that Fedora version is not final yet
+- `AKMODS_DIGEST`, `AKMODS_NVIDIA_DIGEST`, `AKMODS_ZFS_DIGEST` - akmods image digests (resolved and cosign-verified once)
+- `IMAGE_NAME` - Target image name (wrasse/wrasse-nvidia)
+- `KERNEL` - Kernel release the akmods images were resolved for
+- `UBLUE_IMAGE_TAG` - Release line (reimagined/next/stable)
 
-### Base Image Pinning
+### Base Image and akmods Pinning
 
-`image-versions.yml` is the single source of truth for pinned upstream digests,
-and every entry in it is load-bearing. `just build` reads each digest with `yq`
-and passes it into the Containerfile, which builds `FROM image:tag@digest`.
+`just build` resolves the `silverblue-main:<fedora_version>` base image and each akmods image
+(`just resolve-akmods`) to a digest once, cosign-verifies the digest, and builds from the digest only.
+`03-install-kernel-akmods.sh` requires the digest build args and never reads a tag. If an image is missing
+or verification fails, the build exits non-zero and that matrix cell pushes nothing.
 
-Base image entries are keyed by Fedora major version and must be named
-`<base_image_name>-main-<fedora_version>`, for example `silverblue-main-44`.
-The key is the version `just fedora_version` resolves at build time, not the
-stream name, so the pinned digest can never disagree with the version the
-kernel and akmods were resolved for.
-
-At a Fedora rollover, add a new entry before building. A missing entry fails
-the build with `No digest pinned for silverblue-main-<version>` rather than
-silently falling back to a floating tag.
-
-`repo:tag@sha256:...` is valid for buildah `FROM` and for cosign, but `skopeo
-inspect` and `podman manifest inspect` both reject it with "Docker references
-with both a tag and digest are currently not supported". Do not "fix" a working
-`FROM` on the basis of that error.
+`image-versions.yml` now pins only images that are not tied to a Fedora version (`brew`).
 
 ### Publishing and Image Signing
 

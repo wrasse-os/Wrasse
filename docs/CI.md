@@ -1,0 +1,38 @@
+# CI: release lines and image matrix
+
+One git branch (`main`). Every channel is an image tag produced by one build matrix in `.github/workflows/build.yml`.
+
+| Line | Fedora version | Image tags |
+|---|---|---|
+| `stable` | newest final Fedora | `stable`, `stable-<fedora>.<date>`, `stable-<date>` |
+| `next` | newest Fedora beta; stays on the last one until the next beta | `next`, ... |
+| `reimagined` | newest branched Fedora (never Rawhide); with none, whatever `next` is | `reimagined`, ... |
+
+Images: `ghcr.io/wrasse-os/wrasse` and `ghcr.io/wrasse-os/wrasse-nvidia`. Each line x flavor is an independent matrix cell.
+
+## Config
+
+`.github/build-matrix.json` has one entry per line: `akmods_flavor`, `kernel_pin` (empty = follow the akmods tag) and
+`nvidia` (true/false). Setting a line's `nvidia` to `false` drops that line's nvidia image; it is the only switch.
+`reimagined` currently has `nvidia: true`. That is a placeholder, not a decision (see the pending decisions in `SPEC.md`).
+
+## How versions are resolved
+
+`.github/scripts/resolve-lines.sh` (run once in the `plan` job, and by `just` for local builds):
+
+- final = highest Fedora release in state `current` in Bodhi (`bodhi.fedoraproject.org/releases/`);
+- branched = a `pending` Bodhi release whose branch is not `rawhide`;
+- beta = a `NN_Beta/` directory under `dl.fedoraproject.org/pub/fedora/linux/releases/test/` for an `NN` newer than final.
+
+Any lookup failure fails the `plan` job, so nothing is built from a guessed version.
+
+## Fail closed
+
+`just build` resolves the base image and each akmods image to a digest once, cosign-verifies the digest and builds from the
+digest. If an image does not exist for that Fedora version and kernel, or verification fails, the cell exits before any push.
+Its tag keeps pointing at the last good image. Other cells are unaffected (`fail-fast: false`); the `Summary` job turns the
+run red so the failure is visible.
+
+## Local builds
+
+`just build wrasse stable default` resolves the version itself. Override with `FEDORA_VERSION=44 just build ...`.

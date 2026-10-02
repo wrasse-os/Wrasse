@@ -123,3 +123,5 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **`clean.yml`** only lists `wrasse` and `wrasse-nvidia`. **`changelogs.py`**: registry `ghcr.io/wrasse-os/`, images `wrasse` and
   `wrasse-nvidia`, no dx section or dx packages, no `stable-daily` special case. **Renovate**: dropped the `silverblue-main` digest
   rule (that image is resolved at build time now).
+- **Docs**: added `docs/CI.md` (lines, config, resolution, fail-closed) and `docs/CI-SECRETS.md` (secrets and one-time setup the user
+  must do); `AGENTS.md` build/workflow/pinning sections rewritten for the new layout.
