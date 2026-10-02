@@ -13,7 +13,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 2 | CI + release lines | partial: implemented, 3 items blocked (see "Phase 2 status notes") |
 | 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
 | 4 | Terminal (Zellij, multiplexer) | done (not run on hardware; see "Phase 4 status notes") |
-| 5 | Claude Code integration | todo |
+| 5 | Claude Code integration | partial: implemented and verified where possible, gating blocked on pending decision 2 (see "Phase 5 status notes") |
 | 6 | `wrasse install` (Rust CLI) | partial: implemented and unit tested, Flatpak-vs-brew policy blocked on pending decision 1 (see "Phase 6 status notes") |
 | 7 | Installer + ISO | todo |
 | 8 | Docs | todo |
@@ -29,6 +29,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 1. `wrasse install`: when a package exists in both Flatpak and brew, auto-pick or ask the user?
    *blocked (Phase 6): `--prefer flatpak|brew|ask` and `prefer` in `~/.config/wrasse/config.toml` exist; with neither set, install stops with a `policy_required` error. To decide, bake a default into `classify::resolve` (`None => ...`) in `cli/src/classify.rs`.*
 2. Claude Code integration in every image, or only after `ujust dx on`?
+   *blocked (Phase 5): everything ships in every image today (stub, slice, skill, link hook, oomd). To gate, make the stub, the skill-link hook and the skill itself check `ujust dx status` / the sysext, and move the files into the sysext or a conditional; nothing else depends on it.*
 3. Does `reimagined` get an nvidia flavor, given akmods often lag on branched Fedora?
    *blocked (Phase 2): `.github/build-matrix.json` has `"nvidia": true` for `reimagined` only as a placeholder matching the
    spec's "6 images"; flip that one boolean to change it. Not a decision.*
@@ -200,6 +201,31 @@ zellij from fish config (it would hijack VS Code terminals and SSH). Verify the 
   (clashes with multiplexers). Lidless hooks, a usage panel, and crash-dump-to-agent are parked.
 - Pending decision 2 (every image vs only after `ujust dx on`) is open: ship the files in the image but do not decide the gating; mark `blocked` what depends on it.
 
+### Phase 5 status notes
+
+Done (written; image not built or booted): skill `/usr/share/wrasse/skills/wrasse/SKILL.md` (uses `wrasse install`, `--json`, exit code 3 and
+`policy_required`), user-setup hook `30-wrasse-agent-skill.sh` linking it into `~/.claude/skills/wrasse` and `~/.agents/skills/wrasse` once;
+lazy `/usr/bin/claude` stub (exec `~/.local/bin/claude` in `wrasse-agents.slice`, else explain, ask `[y/N]`, run the official installer);
+`wrasse-agents.slice` (+ `.d/20-oomd.conf`) with limits explained in `docs/AGENT-SLICE.md`; `systemd-oomd` enabled and tested in the build;
+PATH snippets for bash and fish; build checks. Nothing auto-approves, no keybinding, no flags are passed to Claude Code.
+
+Findings (verified on a Fedora 44 host and against code.claude.com/docs on 2026-10-03):
+- Skill format: `~/.claude/skills/<name>/SKILL.md`, frontmatter fields all optional (`name`, `description`, ...), symlinked skill directories are
+  followed. The docs do not mention `~/.agents/skills`; the link is kept because the spec asks for it.
+- Official installer: `curl -fsSL https://claude.ai/install.sh | bash` (also `| bash -s stable|<version>`). Installs the launcher at
+  `~/.local/bin/claude` (symlink into `~/.local/share/claude/versions/`), auto-updates in the background. Docs also list signed dnf/apt/apk
+  repos, not usable on an immutable root. The stub downloads to a temp file first, then runs it.
+- systemd: `MemoryHigh=` accepts a percentage of RAM. `systemd-oomd` ships in `systemd-udev` on F44 and Fedora's preset already enables it;
+  the build now enables it explicitly. **Fedora's `user/slice.d/10-oomd-per-slice-defaults.conf` (80% pressure) overrides a limit set in the slice
+  file itself**, so ours is in a `.d` drop-in. A dash in the slice name nests it under an implicit `wrasse.slice`.
+- PATH: fish adds nothing for `~/.local/bin` by default; bash only through `/etc/skel/.bashrc` (new users). Hence the two `wrasse-path` files.
+  zsh not touched.
+
+Blocked: gating (pending decision 2), see above.
+
+Needs real hardware or CI: image build with the new files (exec bits through `rsync -rvK`), the first-login hook on a real session, the installer end to end
+(not run: it downloads and installs software), an actual oomd kill under memory pressure (test command in `docs/AGENT-SLICE.md`).
+
 ## Phase 6: `wrasse install` (Rust CLI)
 
 A router, not a package manager. Each backend does its own real work.
@@ -232,8 +258,7 @@ Open or not verified:
 - Flathub currently lists some apps under two IDs that differ only by case (for example `org.mozilla.firefox` and `org.mozilla.Firefox`,
   `org.videolan.vlc` and `org.videolan.VLC`). wrasse reports that as ambiguous and asks for the exact ID rather than guessing.
 - Brew casks are ignored (they are macOS only); only formulae are routed. Distrobox packages are not exported to the host menu.
-- The system skill is a Phase 5 file and does not exist in this tree yet, so the "update the skill to use `wrasse install`" item is
-  not done. Phase 5 should reference the commands and the `policy_required` error code.
+- The system skill now exists (Phase 5) and teaches `wrasse install`, `--json`, exit code 3 and the `policy_required` error.
 - Exit codes: 0 ok, 1 error or partial `sync` failure, 3 when a policy is required (or `ask` has no terminal).
 
 ## Phase 7: installer + ISO
