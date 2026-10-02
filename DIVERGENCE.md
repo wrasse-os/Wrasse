@@ -19,6 +19,8 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
   cell. A failed cell pushes nothing, so its tag keeps the last good image; a `Summary` job turns the run red. Triggers: push and
   pull request on `main`, weekly cron, manual dispatch with an optional line filter. Release/changelog job for `stable` only.
   Removed: dx axis, `beta` branch trigger, `stable-daily`, gts and lts.
+- A `Require signing key before any push` step fails a non-PR run before the push when `SIGNING_SECRET` is empty, so no unsigned image
+  can reach GHCR (the cosign step runs after the push).
 - Fedora versions per line come from Bodhi (`current` = final, non-rawhide `pending` = branched) and the `releases/test/NN_Beta/`
   directory (beta). Why: Bluefin read a ublue manifest that does not exist for branched Fedora. `.github/build-matrix.json` holds the
   per-line akmods flavor, kernel pin and one `nvidia` boolean.
