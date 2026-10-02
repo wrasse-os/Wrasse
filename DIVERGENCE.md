@@ -33,3 +33,5 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
   Firefox system-config hook (`privileged-setup.hooks.d/99-flatpaks.sh`, `firefox-config/`) that only
   served Firefox. Font Downloader was not in the list. Bazaar's curated "Browsers" section still lists Firefox
   as a store suggestion, not a default.
+- **Added default Flatpaks** Chromium (replaces Firefox) and Clapper. Extension Manager, Flatseal and
+  Mission Center were already defaults.
