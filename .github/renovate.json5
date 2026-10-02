@@ -60,11 +60,6 @@
       "automerge": false
     },
     {
-      "matchUpdateTypes": ["pin", "digest", "pinDigest"],
-      "matchDepNames": ["ghcr.io/projectbluefin/common"],
-      "automerge": false
-    },
-    {
       "automerge": true,
       "matchUpdateTypes": ["digest"],
       "matchDepNames": [

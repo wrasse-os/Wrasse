@@ -14,3 +14,5 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
 - **Containerfile builds common's artifacts itself** (`common-build` stage: umotd, uwelcome, ChairLift
   helper, game-device udev rules, wallpapers) instead of `COPY --from=ghcr.io/projectbluefin/common`.
   Same pins and checksum verification as upstream common; the `ctx` overlay order is unchanged.
+- **Dropped the `common` image dependency** from `Justfile`, `image-versions.yml` and renovate config
+  (build args, digest lookup, cosign verify). Nothing pulls `ghcr.io/projectbluefin/common` anymore.
