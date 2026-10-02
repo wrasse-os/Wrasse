@@ -26,10 +26,27 @@ mv /tmp/rpms/* /tmp/akmods/
 # NOTE: kernel-rpms should auto-extract into correct location
 
 # Install Kernel
+# On a plain Fedora base, kernel-install's rpm-ostree and dracut hooks fail inside the container build
+# (ublue-os/main hit this on F43 and shims both hooks). 19-initramfs.sh generates the initramfs afterwards.
+KERNEL_INSTALL_DIR=/usr/lib/kernel/install.d
+for hook in 05-rpmostree.install 50-dracut.install; do
+    if [[ -f "${KERNEL_INSTALL_DIR}/${hook}" ]]; then
+        mv "${KERNEL_INSTALL_DIR}/${hook}" "${KERNEL_INSTALL_DIR}/${hook}.bak"
+        printf '%s\n' '#!/bin/sh' 'exit 0' >"${KERNEL_INSTALL_DIR}/${hook}"
+        chmod +x "${KERNEL_INSTALL_DIR}/${hook}"
+    fi
+done
+
 dnf5 -y install \
     /tmp/kernel-rpms/kernel-[0-9]*.rpm \
     /tmp/kernel-rpms/kernel-core-*.rpm \
     /tmp/kernel-rpms/kernel-modules-*.rpm
+
+for hook in 05-rpmostree.install 50-dracut.install; do
+    if [[ -f "${KERNEL_INSTALL_DIR}/${hook}.bak" ]]; then
+        mv -f "${KERNEL_INSTALL_DIR}/${hook}.bak" "${KERNEL_INSTALL_DIR}/${hook}"
+    fi
+done
 
 # TODO: Figure out why akmods cache is pulling in akmods/kernel-devel
 dnf5 -y install \

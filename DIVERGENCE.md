@@ -45,6 +45,9 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
   Why: the base is no longer `silverblue-main`. Not reproduced: `ublue-os-just/-luks/-udev-rules/-signing/-update-services` (this
   repo carries its own copies), `fedora-repos-archive`, the on-device `cosign` RPM (excluded in `04-packages.sh`), the
   `rm /usr/bin/chsh`, the staging COPR.
+- `03-install-kernel-akmods.sh` stubs kernel-install's `05-rpmostree.install` and `50-dracut.install` while the akmods kernel RPMs install,
+  as ublue-os/main does on a plain Fedora base; `19-initramfs.sh` still builds the initramfs. Why: unverified without a build, but main hit
+  the failure with the same procedure.
 - `FEDORA_PRERELEASE` build arg replaces `UBLUE_IMAGE_TAG == beta` in `03-install-kernel-akmods.sh` and `validate-repos.sh`.
 - `clean.yml` lists only the two Wrasse images. `changelogs.py`: registry `ghcr.io/wrasse-os/`, no dx section. Renovate: dropped the
   `silverblue-main` digest rule.
