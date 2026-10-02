@@ -68,3 +68,10 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **`vm.page-cluster = 0`** (own file): no swap readahead on zram.
 - **`vm.swappiness = 180`** (own file): favor swapping to zram over dropping file cache. No other swappiness setting exists in this repo or the vendored common; the base image was not checked.
 - **MGLRU `min_ttl_ms = 1000`** (own tmpfiles file): keep the working set from thrashing.
+
+## Terminal
+
+- **Removed all bash "bling"**: `ublue-os/bling/*`, `ublue-bling`, the `ujust bluefin-cli` recipe and its
+  `cli.Brewfile`, the uwelcome `term_bling` entry, and the `bluefin-cli` copy in `18-workarounds.sh`.
+  Why: Wrasse ships vanilla shells; users bring their own prompt and tools. Fastfetch theming
+  (`ublue-bling-fastfetch`) is kept.

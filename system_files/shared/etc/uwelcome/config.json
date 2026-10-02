@@ -10,10 +10,6 @@
       "desc": "banner_toggle"
     },
     {
-      "cmd": "ujust bluefin-cli",
-      "desc": "term_bling"
-    },
-    {
       "cmd": "brew help",
       "desc": "cli_pkg"
     },
