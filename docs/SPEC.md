@@ -16,7 +16,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 5 | Claude Code integration | partial: implemented and verified where possible, gating blocked on pending decision 2 (see "Phase 5 status notes") |
 | 6 | `wrasse install` (Rust CLI) | partial: implemented and unit tested, Flatpak-vs-brew policy blocked on pending decision 1 (see "Phase 6 status notes") |
 | 7 | Installer + ISO | partial: implemented, no ISO built or booted; needs a CI run and a VM/hardware install (see "Phase 7 status notes") |
-| 8 | Docs | todo |
+| 8 | Docs | done (see "Phase 8 status notes"; some content is blocked on pending decisions) |
 
 ## Decisions made
 
@@ -311,3 +311,19 @@ Blocked or left open (not decided here):
 
 README, install guide (GPU table, Secure Boot MOK enrollment for NVIDIA with the ublue key, release line explanation),
 ujust reference, `wrasse install` docs, and `DIVERGENCE.md` cleanup.
+
+### Phase 8 status notes
+
+Done: `README.md` rewritten (Bluefin branding stated as unrenamed), `docs/INSTALL.md`, `docs/UJUST.md`, `docs/WRASSE-INSTALL.md`, `AGENTS.md`
+reduced to a pointer, `DIVERGENCE.md` regrouped by area.
+
+Findings:
+- Secure Boot: the `ujust enroll-secure-boot-key` recipe imports `/etc/pki/akmods/certs/akmods-ublue.der` with password `universalblue`.
+  `ublue-os/akmods` `certs/` has two keys (`public_key.der` "ublue kernel", `public_key_2.der` "ublue akmods"; dual signing since 2024); upstream docs
+  name only `public_key.der`. Which one the on-device file equals was not verified. Not tested on hardware.
+- `ujust toggle-testing` is stale for Wrasse (knows only stable/latest/lts tags). Documented in `docs/UJUST.md`, not changed (outside Phase 8).
+
+*blocked (pending decision 1):* `docs/WRASSE-INSTALL.md` documents the `policy_required` behaviour; update it when a default is chosen.
+*blocked (pending decision 2):* docs say Claude Code ships in every image; update if gated behind `ujust dx on`.
+*blocked (pending decisions 3 and 4):* `docs/INSTALL.md` says the `reimagined` NVIDIA image and its status as the feature-first line are open.
+*blocked (`brand:`):* README, INSTALL and UJUST keep Bluefin names where unrenamed and must be revisited when `brand:` runs.
