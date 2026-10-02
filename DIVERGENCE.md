@@ -205,3 +205,11 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   Why: spec Phase 5. Docs (code.claude.com/docs/en/skills) confirm `~/.claude/skills/<name>/SKILL.md` and that symlinked
   skill directories are followed; they do not mention `~/.agents/skills`, which is kept only because the spec asks for it
   (other agent tools read it).
+
+- **Lazy `/usr/bin/claude` stub.** If `~/.local/bin/claude` exists it is exec'd (never itself, guarded by `readlink -f`),
+  inside `systemd-run --user --scope --slice=wrasse-agents.slice`; without a user manager it runs unwrapped and says so
+  (`WRASSE_AGENT_NO_SLICE=1` also skips the slice). Otherwise it explains, needs a terminal, asks `[y/N]`, downloads
+  `https://claude.ai/install.sh` to a temp file and runs it (the method documented at code.claude.com/docs/en/setup;
+  no root needed, installs to `~/.local/bin` and `~/.local/share/claude`, then auto-updates itself), then launches. No flags
+  are added to Claude Code, so permission modes are untouched. Why: Claude Code is not baked into the image, so it can
+  update itself. Gating on pending decision 2 is not done; see `docs/SPEC.md`.

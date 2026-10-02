@@ -1,0 +1,86 @@
+#!/usr/bin/bash
+# Lazy Claude Code launcher. Claude Code is not part of the image: it updates itself
+# in the user's home. This stub runs the real binary if it is installed, otherwise
+# explains and offers Anthropic's official native installer (asks first).
+#
+# The real binary is always started inside wrasse-agents.slice so that
+# systemd-oomd kills the agent, not the desktop, when memory runs out.
+# Set WRASSE_AGENT_NO_SLICE=1 to skip the slice.
+
+REAL="${HOME}/.local/bin/claude"
+SLICE="wrasse-agents.slice"
+# Official native installer, from https://code.claude.com/docs/en/setup
+INSTALL_URL="https://claude.ai/install.sh"
+
+real_is_usable() {
+    [[ -x "${REAL}" ]] || return 1
+    # Never exec ourselves if ~/.local/bin/claude points back at this stub.
+    [[ "$(readlink -f "${REAL}")" != "$(readlink -f "${BASH_SOURCE[0]}")" ]]
+}
+
+launch() {
+    if [[ -z "${WRASSE_AGENT_NO_SLICE:-}" ]] && command -v systemd-run >/dev/null 2>&1 \
+        && systemd-run --user --scope --quiet --slice="${SLICE}" true >/dev/null 2>&1; then
+        exec systemd-run --user --scope --quiet --slice="${SLICE}" -- "${REAL}" "$@"
+    fi
+    if [[ -z "${WRASSE_AGENT_NO_SLICE:-}" ]]; then
+        echo "claude: no systemd user session; starting without the ${SLICE} memory limit." >&2
+    fi
+    exec "${REAL}" "$@"
+}
+
+if real_is_usable; then
+    launch "$@"
+fi
+
+cat >&2 <<MSG
+Claude Code is not installed yet.
+
+Wrasse does not ship it in the image. Anthropic's official installer puts it in your
+home directory (~/.local/bin/claude and ~/.local/share/claude), needs no root, and the
+installed copy updates itself in the background.
+
+  Installer: curl -fsSL ${INSTALL_URL} | bash
+  Docs:      https://code.claude.com/docs/en/setup
+
+Once installed, this same command starts it inside ${SLICE}, a memory-limited
+group, so a runaway agent is stopped before it freezes the desktop.
+MSG
+
+if [[ ! -t 0 || ! -t 2 ]]; then
+    echo "Not running in a terminal, so nothing was installed. Run 'claude' from a terminal to install it." >&2
+    exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "claude: curl is needed to download the installer and was not found." >&2
+    exit 1
+fi
+
+read -r -p "Download and run the installer from ${INSTALL_URL} now? [y/N] " answer
+case "${answer}" in
+    [yY] | [yY][eE][sS]) ;;
+    *)
+        echo "Cancelled. Nothing was installed." >&2
+        exit 1
+        ;;
+esac
+
+installer="$(mktemp)"
+trap 'rm -f "${installer}"' EXIT
+if ! curl -fsSL "${INSTALL_URL}" -o "${installer}"; then
+    echo "claude: could not download ${INSTALL_URL}." >&2
+    exit 1
+fi
+if ! bash "${installer}"; then
+    echo "claude: the installer failed. See https://code.claude.com/docs/en/troubleshoot-install" >&2
+    exit 1
+fi
+
+if ! real_is_usable; then
+    echo "claude: the installer finished but ${REAL} is missing. See https://code.claude.com/docs/en/troubleshoot-install" >&2
+    exit 1
+fi
+# exec replaces this shell, so the EXIT trap would not run; clean up first.
+rm -f "${installer}"
+launch "$@"
