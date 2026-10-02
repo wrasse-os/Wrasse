@@ -12,7 +12,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 1 | Base image changes | done (except `brand:`, deferred by the user) |
 | 2 | CI + release lines | partial: implemented, 3 items blocked (see "Phase 2 status notes") |
 | 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
-| 4 | Terminal (Zellij, multiplexer) | todo |
+| 4 | Terminal (Zellij, multiplexer) | done (not run on hardware; see "Phase 4 status notes") |
 | 5 | Claude Code integration | todo |
 | 6 | `wrasse install` (Rust CLI) | todo |
 | 7 | Installer + ISO | todo |
@@ -171,6 +171,16 @@ Zellij as a default brew package, installed on first login (follow Bluefin's exi
 `homebrew/preinstall.d/` and `usr/libexec/brew-preinstall`).
 `ujust multiplexer zellij|none`: sets Ptyxis's profile custom command to launch zellij; `none` reverts it. Do NOT auto-start
 zellij from fish config (it would hijack VS Code terminals and SSH). Verify the actual Ptyxis gsettings keys.
+
+### Phase 4 status notes
+
+- Zellij added to `preinstall.d/system-cli.Brewfile`; `brew-preinstall` needed no change.
+- Reality differs from the spec's UUID assumption: the vendored dconf palette file pins profile
+  `2871e8027773ae74d6c87a5f659bbc74`, but Ptyxis generates its own default profile UUID (`org.gnome.Ptyxis default-profile-uuid`).
+  `ujust multiplexer` reads that key instead of hardcoding. The vendored palette entry may therefore never apply to real profiles;
+  not touched here (outside Phase 4).
+- Verified keys: `org.gnome.Ptyxis.Profile` `use-custom-command` (b) and `custom-command` (s), against ptyxis 50.1's installed schema.
+- Needs real hardware: confirm Ptyxis honours the custom command for new tabs and that `none` restores the shell.
 
 ## Phase 5: Claude Code integration (Claude Code only, done properly)
 
