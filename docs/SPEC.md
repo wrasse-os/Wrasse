@@ -14,7 +14,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
 | 4 | Terminal (Zellij, multiplexer) | done (not run on hardware; see "Phase 4 status notes") |
 | 5 | Claude Code integration | todo |
-| 6 | `wrasse install` (Rust CLI) | todo |
+| 6 | `wrasse install` (Rust CLI) | partial: implemented and unit tested, Flatpak-vs-brew policy blocked on pending decision 1 (see "Phase 6 status notes") |
 | 7 | Installer + ISO | todo |
 | 8 | Docs | todo |
 
@@ -27,6 +27,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 ## Pending decisions (stop and ask the user)
 
 1. `wrasse install`: when a package exists in both Flatpak and brew, auto-pick or ask the user?
+   *blocked (Phase 6): `--prefer flatpak|brew|ask` and `prefer` in `~/.config/wrasse/config.toml` exist; with neither set, install stops with a `policy_required` error. To decide, bake a default into `classify::resolve` (`None => ...`) in `cli/src/classify.rs`.*
 2. Claude Code integration in every image, or only after `ujust dx on`?
 3. Does `reimagined` get an nvidia flavor, given akmods often lag on branched Fedora?
    *blocked (Phase 2): `.github/build-matrix.json` has `"nvidia": true` for `reimagined` only as a placeholder matching the
@@ -209,6 +210,31 @@ A router, not a package manager. Each backend does its own real work.
 - `--json` output on every command for agents. Update the system skill so agents use `wrasse install`.
 - Single static-ish binary, shipped in the image. Include tests.
 - Pending decision 1 (Flatpak vs brew when both exist): do not pick; implement a policy flag with no default chosen by you, mark `blocked`.
+
+### Phase 6 status notes
+
+Done: `cli/` crate (`wrasse`, deps clap/serde/serde_json/toml, own `[workspace]`). Commands `install`, `remove`, `list`, `search`, `sync`,
+`--json` and `--dry-run` on all; `install --dx` / `remove --dx` call `ujust dx on|off`; `install --from <distro>` uses distrobox
+(container `wrasse-<distro>`; fedora, ubuntu, debian, arch, alpine, opensuse, or a full image ref). Manifest `~/.config/wrasse/packages.toml`
+(honours `WRASSE_CONFIG_DIR`, `XDG_CONFIG_HOME`). Backends are plain functions over a `Runner` with real, dry-run and fake modes. 41 tests
+(25 unit, 16 end to end with the fake runner), `cargo clippy --all-targets -D warnings` clean. Containerfile stage `wrasse-build`
+(`rust:alpine` by digest, musl, `--locked`) copies the binary to `/usr/bin/wrasse`. Flag spellings were checked against the local
+`flatpak`, `brew`, `distrobox` help output; read-only lookups and `--dry-run` were smoke-tested against the real tools.
+
+Blocked: Flatpak-vs-brew policy (pending decision 1). No default is baked in; see the note under that decision.
+
+Open or not verified:
+- The image build was not run, so the musl static binary and the `/usr/bin/wrasse` path are unconfirmed until CI. A package in both
+  Flatpak and brew was only exercised with the fake runner.
+- Real installs, removals, `sync` and the DX toggle were not run against real backends (they change the machine).
+- Flatpak installs go to the user installation (`--user`, with a user `flathub` remote added if missing), because the manifest is per user and
+  needs no pkexec. Apps already installed system-wide are not seen by `sync` or removed by `wrasse remove`.
+- Flathub currently lists some apps under two IDs that differ only by case (for example `org.mozilla.firefox` and `org.mozilla.Firefox`,
+  `org.videolan.vlc` and `org.videolan.VLC`). wrasse reports that as ambiguous and asks for the exact ID rather than guessing.
+- Brew casks are ignored (they are macOS only); only formulae are routed. Distrobox packages are not exported to the host menu.
+- The system skill is a Phase 5 file and does not exist in this tree yet, so the "update the skill to use `wrasse install`" item is
+  not done. Phase 5 should reference the commands and the `policy_required` error code.
+- Exit codes: 0 ok, 1 error or partial `sync` failure, 3 when a policy is required (or `ask` has no terminal).
 
 ## Phase 7: installer + ISO
 
