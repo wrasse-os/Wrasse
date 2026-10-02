@@ -76,3 +76,4 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   Why: Wrasse ships vanilla shells; users bring their own prompt and tools. Fastfetch theming
   (`ublue-bling-fastfetch`) is kept.
 - **Removed starship** everywhere: binary download, bash profile.d hook, fish and zsh init, brew preinstall entry.
+- **fish prompt** replaced Bluefin's user@host/container prompt with `<full directory>> `.
