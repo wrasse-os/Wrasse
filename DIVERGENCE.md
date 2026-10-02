@@ -133,3 +133,26 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   rule (that image is resolved at build time now).
 - **Docs**: added `docs/CI.md` (lines, config, resolution, fail-closed) and `docs/CI-SECRETS.md` (secrets and one-time setup the user
   must do); `AGENTS.md` build/workflow/pinning sections rewritten for the new layout.
+
+## DX sysext (Phase 3)
+
+- **`wrasse-dx.raw` build** (`build_files/dx/build-sysext.sh`, Containerfile stages `dx-build` and `final`): a systemd-sysext in
+  erofs (lz4), built `FROM base` so `dnf5 download --resolve` fetches only what the image lacks and the extension-release comes from
+  the image's own `/usr/lib/os-release`. Same method as github.com/fedora-sysexts/fedora (`sysext.just`): download RPMs, extract with
+  `rpm2cpio | cpio`, `/etc` to `/usr/etc`, `usr/sbin` into `usr/bin`, drop `/var` `/run` `/boot`, then `mkfs.erofs`.
+  Two deliberate differences: (1) `ID=` is the image's real `ID`, not fedora-sysexts' `ID=_any` (spec asks for ID + VERSION_ID to
+  match, and the build asserts it; `_any` was only needed for images whose ID they do not know); (2) SELinux labels come from
+  `mkfs.erofs --file-contexts` against the image's `file_contexts`, because `setfiles` needs a privileged container and a plain
+  `podman build` RUN has none. The `.raw` is not labelled by a running kernel, so the checklist verifies labels on a real boot.
+- **Packages**: Docker from Fedora (`moby-engine`, `docker-compose`, `docker-buildx`, which pulls `docker-cli` and `containerd`) rather
+  than docker-ce, so no third-party repo has to follow branched Fedora; Podman extras; libvirt/QEMU/swtpm/virt-manager; VS Code (Microsoft
+  repo, enabled only inside the `dx-build` stage, never in the shipped image); bcc, bpftrace, sysstat and friends; GNOME/GTK `-devel`
+  packages; waydroid. Full list in `PACKAGES`.
+- **Baked at `/usr/share/wrasse/sysexts/`** in the last Containerfile layer (`final`), next to a plain-text
+  `wrasse-dx.extension-release` that `test-sysext.sh` compares with os-release at build time. systemd does not scan that path, so DX
+  stays off until `ujust dx on`. No systemd-sysupdate: bootc delivers the file, so rollback rolls DX back too.
+- **Files moved from `system_files/dx` into the sysext** (`build_files/dx/files/usr`): the docker `ip_forward` sysctl, the
+  `iptable_nat` modules-load entry (was written to `/etc/modules-load.d` by `build-dx.sh`), the libvirt `/var/log/libvirt` tmpfiles
+  entry and relabel unit (renamed `wrasse-dx-libvirt-relabel.service`), and the VS Code first-login hook (reads its settings from
+  `/usr/share/wrasse/dx/vscode-settings.json` instead of `/etc/skel`, which a sysext cannot provide).
+- **`Containerfile`**: `base` now ends the stage chain `base` to `dx-build` to `final`; the default build target is `final`.

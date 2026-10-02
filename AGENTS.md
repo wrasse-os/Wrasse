@@ -10,12 +10,12 @@ This document provides essential information for coding agents working with the 
 - **Base**: Fedora Linux with GNOME Desktop + Universal Blue infrastructure
 - **Languages**: Bash scripts, JSON configuration, Python utilities
 - **Build System**: Just (command runner), Podman/Docker containers, GitHub Actions
-- **Target**: desktop OS with two variants (base + developer experience)
+- **Target**: desktop OS with one image with an optional developer-experience sysext (`ujust dx on`)
 
 ## Repository Structure
 
 ### Root Directory Files
-- `Containerfile` - Main container build definition (multi-stage: base → dx)
+- `Containerfile` - Main container build definition (multi-stage: ctx, base, dx-build, final)
 - `Justfile` - Build automation recipes (33KB - like Makefile but more readable)
 - `.pre-commit-config.yaml` - Pre-commit hooks for basic validation
 - `image-versions.yml` - Image version configurations
@@ -25,7 +25,7 @@ This document provides essential information for coding agents working with the 
 - `system_files/` (74MB) - User-space files, configurations, fonts, themes
 - `build_files/` - Build scripts organized as base/, dx/, shared/
   - `base/` - Base image build scripts (00-image-info.sh through 19-initramfs.sh)
-  - `dx/` - Developer experience build scripts
+  - `dx/` - Builds the `wrasse-dx.raw` sysext (`build-sysext.sh`, overlay in `files/`)
   - `shared/` - Common build utilities and helper scripts
 - `.github/workflows/` - Comprehensive CI/CD pipelines
 - `just/` - Additional Just recipes for apps and system management
@@ -184,7 +184,7 @@ Packages are defined directly in build scripts rather than in a central configur
   - `FEDORA_PACKAGES` array - Packages from official Fedora repos (installed in bulk)
   - `COPR_PACKAGES` array - Packages from COPR repos (installed individually with isolated enablement)
   - Fedora version-specific package sections using case statements (e.g., `42)`, `43)`)
-- `build_files/dx/00-dx.sh` - Developer experience package additions
+- `build_files/dx/build-sysext.sh` - DX sysext package list (`PACKAGES`) and erofs build
 
 ### COPR Package Installation
 
@@ -201,7 +201,7 @@ This function:
 3. Installs packages with `--enablerepo` flag to prevent repo conflicts
 
 ### Making Package Changes
-1. Edit the appropriate shell script in `build_files/base/` or `build_files/dx/`
+1. Edit the appropriate shell script in `build_files/base/` (image) or `build_files/dx/build-sysext.sh` (DX sysext)
 2. Add packages to the appropriate array (`FEDORA_PACKAGES` or `COPR_PACKAGES`)
 3. For version-specific packages, add them in the Fedora version case statement
 4. Validate shell script syntax: `bash -n build_files/base/04-packages.sh`
@@ -266,7 +266,8 @@ The `Containerfile` uses a multi-stage build process:
 2. **Stage `base`** (FROM silverblue-main): Base Bluefin image
    - Mounts build context from `ctx` stage
    - Runs `/ctx/build_files/shared/build.sh` which executes all scripts in order
-3. DX is not a stage or an image; it becomes a sysext in a later phase
+3. **Stage `dx-build`** (FROM base): builds `/out/wrasse-dx.raw` with `build_files/dx/build-sysext.sh`
+4. **Stage `final`** (FROM base): copies the sysext to `/usr/share/wrasse/sysexts/` as the last layer
 
 **Build Arguments:**
 - `BASE_IMAGE_NAME` - Upstream base (silverblue/kinoite)
@@ -338,7 +339,7 @@ Scripts in `build_files/base/` execute in numerical order:
 ### Common Modification Patterns
 - **Adding packages**: Edit `build_files/base/04-packages.sh`, add to appropriate array
 - **System configuration**: Modify files in `system_files/shared/`
-- **Build logic**: Edit scripts in `build_files/base/` or `build_files/dx/`
+- **Build logic**: Edit scripts in `build_files/base/` or `build_files/dx/`; DX is a sysext, see `docs/DX-SELINUX-CHECKLIST.md`
 - **CI/CD**: Modify workflows in `.github/workflows/`
 
 ## Trust These Instructions

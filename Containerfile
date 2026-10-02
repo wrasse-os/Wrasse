@@ -174,7 +174,6 @@ ARG KERNEL="6.10.10-200.fc40.x86_64"
 ARG SHA_HEAD_SHORT="dedbeef"
 ARG UBLUE_IMAGE_TAG="stable"
 ARG VERSION=""
-ARG IMAGE_FLAVOR=""
 
 # Build, cleanup, lint.
 RUN --mount=type=cache,dst=/var/cache/libdnf5 \
@@ -189,5 +188,23 @@ RUN --mount=type=cache,dst=/var/cache/libdnf5 \
 RUN rm -rf /opt && ln -s /var/opt /opt
 
 CMD ["/sbin/init"]
+
+RUN bootc container lint
+
+## DX sysext: built FROM the finished image so its dependencies and extension-release match it.
+FROM base AS dx-build
+
+RUN --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/build_files/dx/build-sysext.sh
+
+## Final image: the sysext lives in its own last layer, at a path systemd does not scan,
+## so DX stays off until `ujust dx on` links it into /etc/extensions.
+FROM base AS final
+
+COPY --from=dx-build /out/wrasse-dx.raw /out/wrasse-dx.extension-release /usr/share/wrasse/sysexts/
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/build_files/dx/test-sysext.sh
 
 RUN bootc container lint
