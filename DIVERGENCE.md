@@ -156,3 +156,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   entry and relabel unit (renamed `wrasse-dx-libvirt-relabel.service`), and the VS Code first-login hook (reads its settings from
   `/usr/share/wrasse/dx/vscode-settings.json` instead of `/etc/skel`, which a sysext cannot provide).
 - **`Containerfile`**: `base` now ends the stage chain `base` to `dx-build` to `final`; the default build target is `final`.
+- **`ujust dx on|off|status`** (`60-custom.just`, helper `/usr/libexec/wrasse-dx`, run through `pkexec`): `on` links the baked
+  `.raw` into `/etc/extensions/`, runs `systemd-sysext refresh`, `daemon-reload`, `systemd-sysusers` (creates the `docker`, `libvirt`
+  and `qemu` accounts from the sysext's sysusers.d files), `systemd-tmpfiles --create`, restarts sysctl and modules-load, enables the
+  Docker, Podman and libvirt sockets, and adds the invoking user to `docker` and `libvirt`. `off` reverses all of it and leaves
+  `/var/lib/docker` and `/var/lib/libvirt` alone. The user comes from `PKEXEC_UID`, not from an argument. The existing
+  `ujust devmode` (Homebrew based dev tools) is untouched.

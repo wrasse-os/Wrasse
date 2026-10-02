@@ -1,0 +1,99 @@
+#!/usr/bin/bash
+# Root helper behind `ujust dx on|off`. Run through pkexec (or sudo); the target user
+# is taken from PKEXEC_UID / SUDO_UID, never from an argument.
+#
+# The sysext is baked into the image at /usr/share/wrasse/sysexts/wrasse-dx.raw, a path
+# systemd-sysext does not scan. "on" links it into /etc/extensions and merges it.
+# bootc replaces the .raw with each image update, so rollback rolls DX back with it.
+
+set -euo pipefail
+
+SYSEXT_NAME="wrasse-dx"
+SYSEXT_SRC="/usr/share/wrasse/sysexts/${SYSEXT_NAME}.raw"
+SYSEXT_LINK="/etc/extensions/${SYSEXT_NAME}.raw"
+USER_GROUPS=(docker libvirt)
+# Docker and libvirt socket activation; services start on first use.
+UNITS=(docker.socket podman.socket virtqemud.socket virtnetworkd.socket virtstoraged.socket virtnodedevd.socket virtlogd.socket virtlockd.socket wrasse-dx-libvirt-relabel.service)
+
+die() { echo "wrasse-dx: $*" >&2; exit 1; }
+
+need_root() { [[ "${EUID}" -eq 0 ]] || die "must run as root (use ujust dx)"; }
+
+target_user() {
+    local uid="${PKEXEC_UID:-${SUDO_UID:-}}"
+    [[ -n "${uid}" ]] || die "cannot tell which user to configure (no PKEXEC_UID or SUDO_UID)"
+    getent passwd "${uid}" | cut -d: -f1
+}
+
+is_merged() {
+    systemd-sysext status 2>/dev/null | grep -qw "${SYSEXT_NAME}"
+}
+
+dx_on() {
+    need_root
+    local user
+    user="$(target_user)"
+    [[ -f "${SYSEXT_SRC}" ]] || die "${SYSEXT_SRC} is missing from this image"
+
+    mkdir -p /etc/extensions
+    ln -sfn "${SYSEXT_SRC}" "${SYSEXT_LINK}"
+    systemd-sysext refresh
+    systemctl daemon-reload
+    is_merged || die "sysext did not merge; see 'systemd-sysext status' and 'journalctl -b -u systemd-sysext'"
+
+    # Groups and users that the sysext's sysusers.d files define, state dirs from tmpfiles.d,
+    # then sysctl and module-load drop-ins that arrived with the merge.
+    systemd-sysusers
+    systemd-tmpfiles --create
+    systemctl restart systemd-sysctl.service systemd-modules-load.service || true
+
+    systemctl enable --now "${UNITS[@]}"
+
+    local group
+    for group in "${USER_GROUPS[@]}"; do
+        if getent group "${group}" >/dev/null; then
+            usermod -aG "${group}" "${user}"
+        else
+            echo "wrasse-dx: group ${group} does not exist, skipped" >&2
+        fi
+    done
+    echo "DX is on for ${user}. Log out and back in for group changes to apply."
+}
+
+dx_off() {
+    need_root
+    local user
+    user="$(target_user)"
+
+    # Stop and disable first: unmerging removes the unit files and would leave dangling links.
+    systemctl disable --now "${UNITS[@]}" docker.service 2>/dev/null || true
+
+    local group
+    for group in "${USER_GROUPS[@]}"; do
+        if getent group "${group}" >/dev/null; then
+            gpasswd -d "${user}" "${group}" >/dev/null 2>&1 || true
+        fi
+    done
+
+    rm -f "${SYSEXT_LINK}"
+    if ! systemd-sysext refresh; then
+        echo "wrasse-dx: could not unmerge, something under /usr is still in use (VS Code, a container?)." >&2
+        echo "wrasse-dx: the link is removed, so DX stays off after a reboot." >&2
+        exit 1
+    fi
+    systemctl daemon-reload
+    echo "DX is off. /var/lib/docker, /var/lib/libvirt and your VM images were left alone."
+}
+
+dx_status() {
+    if [[ -L "${SYSEXT_LINK}" ]]; then echo "link:   ${SYSEXT_LINK} -> $(readlink "${SYSEXT_LINK}")"; else echo "link:   none"; fi
+    if is_merged; then echo "merged: yes"; else echo "merged: no"; fi
+    systemd-sysext status 2>/dev/null || true
+}
+
+case "${1:-}" in
+    on) dx_on ;;
+    off) dx_off ;;
+    status) dx_status ;;
+    *) die "usage: wrasse-dx on|off|status" ;;
+esac

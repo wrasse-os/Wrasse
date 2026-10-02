@@ -29,3 +29,25 @@ gradia-extension action="status":
             exit 2
             ;;
     esac
+
+# Turn the developer tools sysext (Docker, libvirt, VS Code, perf, GNOME dev) on or off
+[group('System')]
+dx action="status":
+    #!/usr/bin/bash
+    set -euo pipefail
+
+    case "{{ action }}" in
+        on)
+            pkexec /usr/libexec/wrasse-dx on
+            ;;
+        off)
+            pkexec /usr/libexec/wrasse-dx off
+            ;;
+        status)
+            /usr/libexec/wrasse-dx status
+            ;;
+        *)
+            echo "Usage: ujust dx on|off|status" >&2
+            exit 2
+            ;;
+    esac
