@@ -15,11 +15,6 @@ mkdir -p /usr/share/doc/bluefin
 ghcurl "https://github.com/ublue-os/bluefin-docs/releases/download/0.1/bluefin.pdf" --retry 3 -o /tmp/bluefin.pdf
 install -Dm0644 -t /usr/share/doc/bluefin/ /tmp/bluefin.pdf
 
-# Starship Shell Prompt
-ghcurl "https://github.com/starship/starship/releases/latest/download/starship-x86_64-unknown-linux-gnu.tar.gz" --retry 3 -o /tmp/starship.tar.gz
-tar -xzf /tmp/starship.tar.gz -C /tmp
-install -c -m 0755 /tmp/starship /usr/bin
-
 # Automatic wallpaper changing by month
 HARDCODED_RPM_MONTH="12"
 sed -i "/picture-uri/ s/${HARDCODED_RPM_MONTH}/$(date +%m)/" "/usr/share/glib-2.0/schemas/zz0-bluefin-modifications.gschema.override"
