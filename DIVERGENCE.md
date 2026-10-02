@@ -102,3 +102,15 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   `AKMODS_NVIDIA_DIGEST`, `AKMODS_ZFS_DIGEST` build args. The install script now requires them and copies `@sha256:`, so no tag is
   re-resolved inside the build (the TOCTOU in projectbluefin issue #1264). A missing image or failed verification exits non-zero,
   which fails that matrix cell before anything is pushed.
+- **Release lines and image names in the Justfile**: images are `wrasse` / `wrasse-nvidia` under `ghcr.io/wrasse-os` (`repo_organization`
+  is now `wrasse-os`; flavors are `default` and `nvidia`); tags are the lines `reimagined`, `next`, `stable`. Removed: the `bluefin-dx`
+  image and its `IMAGE_FLAVOR=dx` build arg, the `gts` and `stable-daily` tags, the numeric Fedora-version tags (they collide between
+  lines), the `hwe` akmods flavor, and the CoreOS-manifest/ublue-base-main version lookup. `fedora_version` now takes `FEDORA_VERSION`
+  (set by CI) or runs `resolve-lines.sh`; the akmods flavor and kernel pin come from `.github/build-matrix.json`.
+- **Base image resolved by digest at build time** (Justfile `build`, `image-versions.yml`): the `silverblue-main-NN` entries are gone;
+  `just build` reads `silverblue-main:<fedora>` once, cosign-verifies the digest and builds `FROM ...@sha256:`. Why: with the Fedora
+  version resolved per line automatically, a hand-maintained per-version pin would stall every Fedora rollover. If ublue has not
+  published the base for that Fedora version (true for branched Fedora, see `docs/SPEC.md`), the cell fails closed.
+- **`FEDORA_PRERELEASE` build arg** replaces the `UBLUE_IMAGE_TAG == beta` checks in `03-install-kernel-akmods.sh` and
+  `validate-repos.sh`: updates-testing and the rpmfusion/mesa workarounds apply when the Fedora version is not final yet.
+- **`just build` tolerates a repository with no tags** (`skopeo list-tags` failing on first push).

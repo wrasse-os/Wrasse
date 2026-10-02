@@ -4,8 +4,8 @@ echo "::group:: ===$(basename "$0")==="
 
 set -eoux pipefail
 
-# Beta Updates Testing Repo...
-if [[ "${UBLUE_IMAGE_TAG}" == "beta" ]]; then
+# Pre-release Fedora (branched or beta): enable the updates-testing repo
+if [[ "${FEDORA_PRERELEASE:-0}" == "1" ]]; then
     dnf5 config-manager setopt updates-testing.enabled=1
 fi
 
@@ -42,7 +42,7 @@ dnf5 versionlock add kernel kernel-devel kernel-devel-matched kernel-core kernel
 sed -i 's@enabled=0@enabled=1@g' /etc/yum.repos.d/_copr_ublue-os-akmods.repo
 
 # RPMFUSION Dependent AKMODS
-if [[ "${UBLUE_IMAGE_TAG}" == "beta" ]]; then
+if [[ "${FEDORA_PRERELEASE:-0}" == "1" ]]; then
     dnf5 -y install \
         https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-"$(rpm -E %fedora)".noarch.rpm || true
     dnf5 -y install \
@@ -71,8 +71,8 @@ if [[ "${IMAGE_NAME}" =~ nvidia ]]; then
     mv /tmp/rpms/* /tmp/akmods-rpms/
 
     # Exclude the Golang Nvidia Container Toolkit in Fedora Repo
-    # Exclude for non-beta.... doesn't appear to exist for F42 yet?
-    if [[ "${UBLUE_IMAGE_TAG}" != "beta" ]]; then
+    # Exclude for final releases.... doesn't appear to exist for F42 yet?
+    if [[ "${FEDORA_PRERELEASE:-0}" != "1" ]]; then
         dnf5 config-manager setopt excludepkgs=golang-github-nvidia-container-toolkit
     else
         # Monkey patch right now...

@@ -87,14 +87,14 @@ for repo in "$REPOS_DIR"/rpmfusion-*.repo; do
 done
 
 echo ""
-echo "Checking Fedora updates-testing (should be disabled unless beta)..."
+echo "Checking Fedora updates-testing (should be disabled unless pre-release)..."
 if [[ -f "$REPOS_DIR/fedora-updates-testing.repo" ]]; then
     if grep -q "^enabled=1" "$REPOS_DIR/fedora-updates-testing.repo" 2>/dev/null; then
-        # Allow updates-testing to be enabled for beta builds
-        if [[ "${UBLUE_IMAGE_TAG:-stable}" == "beta" ]]; then
-            echo "updates-testing is enabled (allowed for beta builds)"
+        # Allow updates-testing to be enabled for pre-release Fedora builds
+        if [[ "${FEDORA_PRERELEASE:-0}" == "1" ]]; then
+            echo "updates-testing is enabled (allowed for pre-release builds)"
         else
-            echo "ENABLED: fedora-updates-testing.repo (should only be enabled for beta)"
+            echo "ENABLED: fedora-updates-testing.repo (should only be enabled for pre-release)"
             ENABLED_REPOS+=("fedora-updates-testing.repo")
             VALIDATION_FAILED=1
         fi

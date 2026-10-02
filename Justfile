@@ -1,18 +1,17 @@
-repo_organization := "ublue-os"
+repo_organization := "wrasse-os"
 rechunker_image := "ghcr.io/ublue-os/legacy-rechunk:v1.0.1-x86_64@sha256:2627cbf92ca60ab7372070dcf93b40f457926f301509ffba47a04d6a9e1ddaf7"
 brew_image := "ghcr.io/ublue-os/brew:latest"
 images := '(
-    [bluefin]=bluefin
-    [bluefin-dx]=bluefin-dx
+    [wrasse]=wrasse
 )'
 flavors := '(
-    [main]=main
-    [nvidia-open]=nvidia-open
+    [default]=default
+    [nvidia]=nvidia
 )'
 tags := '(
+    [reimagined]=reimagined
+    [next]=next
     [stable]=stable
-    [latest]=latest
-    [beta]=beta
 )'
 export SUDOIF := if `id -u` == "0" { "" } else { "sudo" }
 export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/usr/bin/podman") } else if path_exists("/usr/bin/docker") == "true" { env("PODMAN", "docker") } else { env("PODMAN", "exit 1 ; ") }
@@ -39,7 +38,7 @@ check:
 validate-scripts:
     #!/usr/bin/bash
     set -eoux pipefail
-    shellcheck build_files/**/*.sh
+    shellcheck build_files/**/*.sh .github/scripts/*.sh
 
 # Fix Just Syntax
 [group('Just')]
@@ -73,11 +72,6 @@ validate $image $tag $flavor:
     declare -A tags={{ tags }}
     declare -A flavors={{ flavors }}
 
-    # Handle Stable Daily
-    if [[ "${tag}" == "stable-daily" ]]; then
-        tag="stable"
-    fi
-
     checkimage="${images[${image}]-}"
     checktag="${tags[${tag}]-}"
     checkflavor="${flavors[${flavor}]-}"
@@ -98,7 +92,7 @@ validate $image $tag $flavor:
 
 # Build Image
 [group('Image')]
-build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline="0" $kernel_pin="":
+build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" pipeline="0" $kernel_pin="":
     #!/usr/bin/bash
 
     echo "::group:: Build Prep"
@@ -116,30 +110,28 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
     base_image_name="silverblue"
 
 
-    # AKMODS Flavor and Kernel Version
-    if [[ "${flavor}" =~ hwe ]]; then
-        akmods_flavor="bazzite"
-    elif [[ "${tag}" =~ stable ]]; then
-        akmods_flavor="coreos-stable"
-    elif [[ "${tag}" =~ beta ]]; then
-        akmods_flavor="main"
-    else
-        akmods_flavor="main"
+    # Per-line settings (akmods flavor, kernel pin) live in the build matrix config
+    akmods_flavor=$(jq -er --arg l "${tag}" '.lines[$l].akmods_flavor' .github/build-matrix.json)
+    if [[ -z "${kernel_pin:-}" ]]; then
+        kernel_pin=$(jq -r --arg l "${tag}" '.lines[$l].kernel_pin // ""' .github/build-matrix.json)
     fi
 
-    # Fedora Version
-    if [[ {{ ghcr }} == "0" ]]; then
-        rm -f /tmp/manifest.json
+    # Fedora Version (FEDORA_VERSION from CI wins, else resolved for the line)
+    fedora_version=$({{ just }} fedora_version '{{ image }}' '{{ tag }}' '{{ flavor }}' "${kernel_pin:-}")
+    fedora_prerelease="${FEDORA_PRERELEASE:-}"
+    if [[ -z "${fedora_prerelease}" ]]; then
+        fedora_prerelease=$(.github/scripts/resolve-lines.sh prerelease "${tag}")
     fi
-    fedora_version=$({{ just }} fedora_version '{{ image }}' '{{ tag }}' '{{ flavor }}' '{{ kernel_pin }}')
 
-    # Base image digest pin, keyed by the resolved Fedora version so the pinned
-    # digest can never disagree with the version everything else is built for.
-    base_image_entry="${base_image_name}-main-${fedora_version}"
-    base_image_sha=$(yq -r ".images[] | select(.name == \"${base_image_entry}\") | .digest" image-versions.yml)
-    if [[ -z "${base_image_sha}" || "${base_image_sha}" == "null" ]]; then
-        echo "No digest pinned for ${base_image_entry} in image-versions.yml." >&2
-        echo "Add an entry for Fedora ${fedora_version} before building." >&2
+    # Base image: resolve the digest once and build from the digest. If the base
+    # image for this Fedora version does not exist yet (ublue does not publish
+    # bases for branched Fedora), fail closed so this cell pushes nothing.
+    if ! base_image_sha=$(skopeo inspect --retry-times 3 --format '{{ '{{.Digest}}' }}' docker://ghcr.io/ublue-os/"${base_image_name}"-main:"${fedora_version}"); then
+        echo "::error::ghcr.io/ublue-os/${base_image_name}-main:${fedora_version} does not exist; refusing to build this cell." >&2
+        exit 1
+    fi
+    if [[ ! "${base_image_sha}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+        echo "::error::Unexpected base image digest '${base_image_sha}'." >&2
         exit 1
     fi
 
@@ -160,12 +152,9 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
     {{ just }} verify-container "brew:latest@${brew_image_sha}" ghcr.io/ublue-os https://raw.githubusercontent.com/ublue-os/brew/refs/heads/main/cosign.pub
 
     # Get Version
-    if [[ "${tag}" =~ stable ]]; then
-        ver="${fedora_version}.$(date +%Y%m%d)"
-    else
-        ver="${tag}-${fedora_version}.$(date +%Y%m%d)"
-    fi
-    skopeo list-tags docker://ghcr.io/{{ repo_organization }}/${image_name} > /tmp/repotags.json
+    ver="${tag}-${fedora_version}.$(date +%Y%m%d)"
+    # A repository that has never been pushed to has no tags yet
+    skopeo list-tags docker://ghcr.io/{{ repo_organization }}/${image_name} > /tmp/repotags.json || echo '{"Tags": []}' > /tmp/repotags.json
     if [[ $(jq "any(.Tags[]; contains(\"$ver\"))" < /tmp/repotags.json) == "true" ]]; then
         POINT="1"
         while $(jq -e "any(.Tags[]; contains(\"$ver.$POINT\"))" < /tmp/repotags.json)
@@ -179,11 +168,6 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
 
     # Build Arguments
     BUILD_ARGS=()
-    # Target
-    if [[ "${image}" =~ dx ]]; then
-        BUILD_ARGS+=("--build-arg" "IMAGE_FLAVOR=dx")
-        target="dx"
-    fi
     BUILD_ARGS+=("--build-arg" "AKMODS_FLAVOR=${akmods_flavor}")
     BUILD_ARGS+=("--build-arg" "AKMODS_DIGEST=${AKMODS_DIGEST}")
     BUILD_ARGS+=("--build-arg" "AKMODS_NVIDIA_DIGEST=${AKMODS_NVIDIA_DIGEST:-}")
@@ -193,6 +177,7 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE={{ brew_image }}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE_SHA=${brew_image_sha}")
     BUILD_ARGS+=("--build-arg" "FEDORA_MAJOR_VERSION=${fedora_version}")
+    BUILD_ARGS+=("--build-arg" "FEDORA_PRERELEASE=${fedora_prerelease}")
     BUILD_ARGS+=("--build-arg" "IMAGE_NAME=${image_name}")
     BUILD_ARGS+=("--build-arg" "IMAGE_VENDOR={{ repo_organization }}")
     BUILD_ARGS+=("--build-arg" "KERNEL=${KERNEL}")
@@ -250,12 +235,12 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
 
 # Build Image and Rechunk
 [group('Image')]
-build-rechunk image="bluefin" tag="latest" flavor="main" kernel_pin="":
+build-rechunk image="wrasse" tag="reimagined" flavor="default" kernel_pin="":
     @{{ just }} build {{ image }} {{ tag }} {{ flavor }} 1 0 0 {{ kernel_pin }}
 
 # Build Image with GHCR Flag
 [group('Image')]
-build-ghcr image="bluefin" tag="latest" flavor="main" kernel_pin="":
+build-ghcr image="wrasse" tag="reimagined" flavor="default" kernel_pin="":
     #!/usr/bin/bash
     if [[ "${UID}" -gt "0" ]]; then
         echo "Must Run with sudo or as root..."
@@ -265,14 +250,14 @@ build-ghcr image="bluefin" tag="latest" flavor="main" kernel_pin="":
 
 # Build Image for Pipeline:
 [group('Image')]
-build-pipeline image="bluefin" tag="latest" flavor="main" kernel_pin="":
+build-pipeline image="wrasse" tag="reimagined" flavor="default" kernel_pin="":
     #!/usr/bin/bash
     ${SUDOIF} {{ just }} build {{ image }} {{ tag }} {{ flavor }} 1 1 1 {{ kernel_pin }}
 
 # Rechunk Image
 [group('Image')]
 [private]
-rechunk $image="bluefin" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
+rechunk $image="wrasse" $tag="reimagined" $flavor="default" ghcr="0" pipeline="0":
     #!/usr/bin/bash
 
     echo "::group:: Rechunk Prep"
@@ -336,10 +321,7 @@ rechunk $image="bluefin" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
     # Cleanup Space during Github Action
     if [[ "{{ ghcr }}" == "1" ]]; then
         base_image_name=silverblue-main
-        if [[ "${tag}" =~ stable ]]; then
-            tag="stable-daily"
-        fi
-        ID=$(${SUDOIF} ${PODMAN} images --filter reference=ghcr.io/{{ repo_organization }}/"${base_image_name}":${fedora_version} --format "{{ '{{.ID}}' }}")
+        ID=$(${SUDOIF} ${PODMAN} images --filter reference=ghcr.io/ublue-os/"${base_image_name}":${fedora_version} --format "{{ '{{.ID}}' }}")
         if [[ -n "$ID" ]]; then
             ${PODMAN} rmi "$ID"
         fi
@@ -392,7 +374,7 @@ rechunk $image="bluefin" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
         --volume "$PWD:/var/git" \
         --volume cache_ostree:/var/ostree \
         --env REPO=/var/ostree/repo \
-        --env PREV_REF=ghcr.io/ublue-os/"${image_name}":"${tag}" \
+        --env PREV_REF=ghcr.io/{{ repo_organization }}/"${image_name}":"${tag}" \
         --env OUT_NAME="$OUT_NAME" \
         --env LABELS="${LABELS}" \
         --env "DESCRIPTION='An interpretation of the Ubuntu spirit built on Fedora technology'" \
@@ -428,7 +410,7 @@ rechunk $image="bluefin" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
 
 # Load OCI into Podman Store
 [group('Image')]
-load-rechunk image="bluefin" tag="latest" flavor="main":
+load-rechunk image="wrasse" tag="reimagined" flavor="default":
     #!/usr/bin/bash
     set -eou pipefail
 
@@ -449,7 +431,7 @@ load-rechunk image="bluefin" tag="latest" flavor="main":
 
 # Run Container
 [group('Image')]
-run $image="bluefin" $tag="latest" $flavor="main":
+run $image="wrasse" $tag="reimagined" $flavor="default":
     #!/usr/bin/bash
     set -eoux pipefail
 
@@ -510,7 +492,7 @@ verify-container container="" registry="ghcr.io/ublue-os" key="":
 
 # Secureboot Check
 [group('Utility')]
-secureboot $image="bluefin" $tag="latest" $flavor="main":
+secureboot $image="wrasse" $tag="reimagined" $flavor="default":
     #!/usr/bin/bash
     set -eou pipefail
 
@@ -613,35 +595,30 @@ resolve-akmods akmods_flavor fedora_version flavor kernel_pin="":
         echo "AKMODS_ZFS_DIGEST=${zfs_digest}"
     fi
 
-# Get Fedora Version of an image
+# Get Fedora Version of a release line
 [group('Utility')]
 [private]
-fedora_version image="bluefin" tag="latest" flavor="main" $kernel_pin="":
+fedora_version image="wrasse" tag="reimagined" flavor="default" $kernel_pin="":
     #!/usr/bin/bash
     set -eou pipefail
     {{ just }} validate {{ image }} {{ tag }} {{ flavor }}
-    if [[ ! -f /tmp/manifest.json ]]; then
-        if [[ "{{ tag }}" =~ stable ]]; then
-            # CoreOS does not uses cosign
-            skopeo inspect --retry-times 3 docker://quay.io/fedora/fedora-coreos:stable > /tmp/manifest.json
-        else
-            skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/base-main:"{{ tag }}" > /tmp/manifest.json
-        fi
-    fi
-    fedora_version=$(jq -r '.Labels["org.opencontainers.image.version"]' < /tmp/manifest.json | grep -oP '^[0-9]+')
     if [[ -n "${kernel_pin:-}" ]]; then
         fedora_version=$(echo "${kernel_pin}" | grep -oP 'fc\K[0-9]+')
+    elif [[ -n "${FEDORA_VERSION:-}" ]]; then
+        fedora_version="${FEDORA_VERSION}"
+    else
+        fedora_version=$(.github/scripts/resolve-lines.sh version "{{ tag }}")
     fi
     echo "${fedora_version}"
 
 # Image Name
 [group('Utility')]
 [private]
-image_name image="bluefin" tag="latest" flavor="main":
+image_name image="wrasse" tag="reimagined" flavor="default":
     #!/usr/bin/bash
     set -eou pipefail
     {{ just }} validate {{ image }} {{ tag }} {{ flavor }}
-    if [[ "{{ flavor }}" =~ main ]]; then
+    if [[ "{{ flavor }}" == "default" ]]; then
         image_name={{ image }}
     else
         image_name="{{ image }}-{{ flavor }}"
@@ -650,56 +627,30 @@ image_name image="bluefin" tag="latest" flavor="main":
 
 # Generate Tags
 [group('Utility')]
-generate-build-tags image="bluefin" tag="latest" flavor="main" kernel_pin="" ghcr="0" $version="" github_event="" github_number="":
+generate-build-tags image="wrasse" tag="reimagined" flavor="default" kernel_pin="" ghcr="0" $version="" github_event="" github_number="":
     #!/usr/bin/bash
     set -eou pipefail
 
-    TODAY="$(date +%A)"
-    WEEKLY="Tuesday"
-    if [[ {{ ghcr }} == "0" ]]; then
-        rm -f /tmp/manifest.json
-    fi
     FEDORA_VERSION="$({{ just }} fedora_version '{{ image }}' '{{ tag }}' '{{ flavor }}' '{{ kernel_pin }}')"
-    DEFAULT_TAG=$({{ just }} generate-default-tag {{ tag }} {{ ghcr }})
-    IMAGE_NAME=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
     # Use Build Version from Rechunk
     if [[ -z "${version:-}" ]]; then
         version="{{ tag }}-${FEDORA_VERSION}.$(date +%Y%m%d)"
     fi
     version=${version#{{ tag }}-}
 
-    # Arrays for Tags
-    BUILD_TAGS=()
-    COMMIT_TAGS=()
-
-    # Commit Tags
+    # Commit Tags (pull requests build but never push)
     github_number="{{ github_number }}"
     SHA_SHORT="$(git rev-parse --short HEAD)"
+    COMMIT_TAGS=()
     if [[ "{{ ghcr }}" == "1" ]]; then
         COMMIT_TAGS+=(pr-${github_number:-}-{{ tag }}-${version})
         COMMIT_TAGS+=(${SHA_SHORT}-{{ tag }}-${version})
     fi
 
-    # Convenience Tags
-    if [[ "{{ tag }}" =~ stable ]]; then
-        BUILD_TAGS+=("stable-daily" "${version}" "stable-daily-${version}" "stable-daily-${version:3}")
-    else
-        BUILD_TAGS+=("{{ tag }}" "{{ tag }}-${version}" "{{ tag }}-${version:3}")
-    fi
+    # Release line tags: the line itself, plus dated variants
+    BUILD_TAGS=("{{ tag }}" "{{ tag }}-${version}" "{{ tag }}-${version:3}")
 
-    # Weekly Stable / Rebuild Stable on workflow_dispatch
-    github_event="{{ github_event }}"
-    if [[ "{{ tag }}" =~ "stable" && "${WEEKLY}" == "${TODAY}" && "${github_event}" =~ schedule ]]; then
-        BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}" "gts" "gts-${version}" "gts-${version:3}")
-    elif [[ "{{ tag }}" =~ "stable" && "${github_event}" =~ workflow_dispatch|workflow_call ]]; then
-        BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}" "gts" "gts-${version}" "gts-${version:3}")
-    elif [[ "{{ tag }}" =~ "stable" && "{{ ghcr }}" == "0" ]]; then
-        BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}" "gts" "gts-${version}" "gts-${version:3}")
-    elif [[ ! "{{ tag }}" =~ stable|beta ]]; then
-        BUILD_TAGS+=("${FEDORA_VERSION}" "${FEDORA_VERSION}-${version}" "${FEDORA_VERSION}-${version:3}")
-    fi
-
-    if [[ "${github_event}" == "pull_request" ]]; then
+    if [[ "{{ github_event }}" == "pull_request" ]]; then
         alias_tags=("${COMMIT_TAGS[@]}")
     else
         alias_tags=("${BUILD_TAGS[@]}")
@@ -709,20 +660,11 @@ generate-build-tags image="bluefin" tag="latest" flavor="main" kernel_pin="" ghc
 
 # Generate Default Tag
 [group('Utility')]
-generate-default-tag tag="latest" ghcr="0":
+generate-default-tag tag="reimagined" ghcr="0":
     #!/usr/bin/bash
     set -eou pipefail
 
-    # Default Tag
-    if [[ "{{ tag }}" =~ stable && "{{ ghcr }}" == "1" ]]; then
-        DEFAULT_TAG="stable-daily"
-    elif [[ "{{ tag }}" =~ stable && "{{ ghcr }}" == "0" ]]; then
-        DEFAULT_TAG="stable"
-    else
-        DEFAULT_TAG="{{ tag }}"
-    fi
-
-    echo "${DEFAULT_TAG}"
+    echo "{{ tag }}"
 
 # Tag Images
 [group('Utility')]
@@ -745,7 +687,7 @@ tag-images image_name="" default_tag="" tags="":
 
 # Extract Container and generate SBOM
 [group('Utility')]
-gen-sbom $image="bluefin" $tag="latest" $flavor="main" $syft_cmd="syft":
+gen-sbom $image="wrasse" $tag="reimagined" $flavor="default" $syft_cmd="syft":
     #!/usr/bin/bash
     set -eoux pipefail
 
@@ -773,7 +715,7 @@ gen-sbom $image="bluefin" $tag="latest" $flavor="main" $syft_cmd="syft":
 
 # DNF CI package cache
 [group('Utility')]
-setup-cache $image="bluefin" $tag="latest" $ghcr="0" $github_event="0":
+setup-cache $image="wrasse" $tag="reimagined" $ghcr="0" $github_event="0":
     #!/usr/bin/bash
     set -eou pipefail
 
@@ -782,7 +724,7 @@ setup-cache $image="bluefin" $tag="latest" $ghcr="0" $github_event="0":
 
     ALLOW_CACHE_WRITE="false"
 
-    BLESSED_IMAGE=bluefin-dx
+    BLESSED_IMAGE=wrasse
 
     if [[ "${image_name}" == "${BLESSED_IMAGE}" ]] && \
        [[ "{{ ghcr }}" == "1" ]] && \
@@ -795,11 +737,11 @@ setup-cache $image="bluefin" $tag="latest" $ghcr="0" $github_event="0":
     echo "${CACHE_NAME}" "${ALLOW_CACHE_WRITE}"
 
 # Examples:
-#   > just retag-nvidia-on-ghcr stable-daily stable-daily-41.20250126.3 0
-#   > just retag-nvidia-on-ghcr latest latest-41.20250228.1 0
+#   > just retag-nvidia-on-ghcr stable stable-44.20260702 0
+#   > just retag-nvidia-on-ghcr reimagined reimagined-45.20261001 0
 #
-# working_tag: The tag of the most recent known good image (e.g., stable-daily-41.20250126.3)
-# stream:      One of latest, stable-daily, or stable
+# working_tag: The tag of the most recent known good image (e.g., stable-44.20260702)
+# stream:      One of reimagined, next, or stable
 # dry_run:     Only print the skopeo commands instead of running them
 #
 # First generate a PAT with package write access (https://github.com/settings/tokens)
@@ -815,6 +757,6 @@ retag-nvidia-on-ghcr working_tag="" stream="" dry_run="1":
         echo "$GITHUB_PAT" | podman login -u $GITHUB_USERNAME --password-stdin ghcr.io
         skopeo="skopeo"
     fi
-    for image in bluefin-nvidia-open bluefin-dx-nvidia-open; do
-      $skopeo copy docker://ghcr.io/ublue-os/${image}:{{ working_tag }} docker://ghcr.io/ublue-os/${image}:{{ stream }}
+    for image in wrasse-nvidia; do
+      $skopeo copy docker://ghcr.io/{{ repo_organization }}/${image}:{{ working_tag }} docker://ghcr.io/{{ repo_organization }}/${image}:{{ stream }}
     done
