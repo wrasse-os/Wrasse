@@ -15,14 +15,6 @@ FEDORA_PACKAGES=(
     bpftop
     bpftrace
     cascadia-code-fonts
-    cockpit-bridge
-    cockpit-machines
-    cockpit-networkmanager
-    cockpit-ostree
-    cockpit-podman
-    cockpit-selinux
-    cockpit-storaged
-    cockpit-system
     dbus-x11
     edk2-ovmf
     flatpak-builder

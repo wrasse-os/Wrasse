@@ -38,3 +38,7 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
 - **Vanilla GNOME layout**: dropped the Ubuntu-style window buttons (`button-layout`) and fixed 4 workspaces
   from the schema override, so GNOME defaults apply (dock was removed earlier). Favorite apps are now
   Chromium, Files, Bazaar, Ptyxis (no Firefox, Thunderbird, GNOME Software or VS Code).
+
+## DX
+
+- **Removed Cockpit** (all `cockpit-*` packages) from the DX build. Only edit made to DX build logic.
