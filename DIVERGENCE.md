@@ -78,7 +78,7 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **Removed starship** everywhere: binary download, bash profile.d hook, fish and zsh init, brew preinstall entry.
 - **fish prompt** replaced Bluefin's user@host/container prompt with `<full directory>> `.
 
-- **Debloated default Flatpaks**: removed Gradia, Connections, Simple Scan, Snapshot, Characters and File Roller. Kept core GNOME
+- **Debloated default Flatpaks**: removed Connections, Simple Scan, Snapshot, Characters and File Roller. Kept core GNOME
   utilities, DistroShelf, Ignition, Impression, Contacts, Calendar, Maps, Weather, Showtime, Refine and the Wrasse set
-  (Chromium, Clapper, Extension Manager, Flatseal, Mission Center, Bazaar). Video mime defaults stay on Showtime. Loupe stays; Warehouse was added.
+  (Chromium, Clapper, Extension Manager, Flatseal, Mission Center, Bazaar). Video mime defaults stay on Showtime. Loupe stays; Warehouse was added. The Gradia Flatpak stays a default (only its shell extension was removed).
   Pinta is no longer a default; it is listed in Bazaar's curated "Office & Productivity" section instead.
