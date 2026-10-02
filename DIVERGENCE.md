@@ -162,3 +162,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 
 - Rewrote `README.md` for Wrasse (Bluefin branding is noted as unrenamed); added `docs/INSTALL.md`, `docs/UJUST.md`,
   `docs/WRASSE-INSTALL.md`; cut `AGENTS.md` down to a pointer to `CLAUDE.md` and `docs/SPEC.md`; regrouped this file by area.
+
+- **Signing key**: generated a new cosign key pair for the wrasse-os org; `/cosign.pub` is now Wrasse's public key (was Bluefin's). The private key and password live only in the repo secrets `SIGNING_SECRET` / `COSIGN_PASSWORD` and a local 0600 backup outside the repo. Round-trip sign/verify was tested. The in-image trust policy (`policy.json`, `registries.d`) still needs this key; see docs/CI-SECRETS.md.
