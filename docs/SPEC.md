@@ -15,7 +15,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 4 | Terminal (Zellij, multiplexer) | done (not run on hardware; see "Phase 4 status notes") |
 | 5 | Claude Code integration | partial: implemented and verified where possible, gating blocked on pending decision 2 (see "Phase 5 status notes") |
 | 6 | `wrasse install` (Rust CLI) | partial: implemented and unit tested, Flatpak-vs-brew policy blocked on pending decision 1 (see "Phase 6 status notes") |
-| 7 | Installer + ISO | todo |
+| 7 | Installer + ISO | partial: implemented, no ISO built or booted; needs a CI run and a VM/hardware install (see "Phase 7 status notes") |
 | 8 | Docs | todo |
 
 ## Decisions made
@@ -270,6 +270,42 @@ Flow: autodetect the GPU (NVIDIA Turing+ -> preselect `wrasse-nvidia`; AMD/Intel
 then ask the release line (Reimagined / Next / Stable), then the usual disk/user steps.
 Build live ISOs using Bluefin's existing ISO tooling, adapted (none exists in this repo: report what upstream uses, e.g.
 `ublue-os/titanoboa`, and what you adapted). Report what changed.
+
+### Phase 7 status notes (verified against live repos on 2026-10-03)
+
+Done: `installer/gpu-detect` (Rust, 15 tests), `installer/gen-catalog.sh`, the `wrasse` ISO variant in `installer/iso/variant/wrasse/`,
+pins in `installer/iso/pin.env`, and `.github/workflows/build-iso.yml` (`workflow_dispatch` only). Nothing was built. Detail in
+`installer/README.md` and `DIVERGENCE.md`.
+
+Findings where reality differs from this spec:
+- **`projectbluefin/bootc-installer` is archived** (last push 2026-09-07). The live upstream is `tuna-os/bootc-installer` (same code, the
+  README still says "hard fork of the Vanilla OS installer"). Pinned: `v2026.09.26-253d6938`, bundle sha256 recorded. Note the other
+  rename: `/etc/tuna-installer/` is now `/etc/bootc-installer/` (verified in that repo's README and code: `images.json` catalog,
+  `recipe.json` sys-recipe, `live-iso-mode` flag, `$XDG_CONFIG_HOME/bootc-installer/images.json`).
+- **Bluefin's live ISO tooling is `projectbluefin/dakota-iso`**, not `ublue-os/titanoboa` (last push 2026-06-18, no installer, GRUB
+  `iso.yaml` contract). dakota-iso retired its own bluefin variants (#228) but the scripts still handle them. Adapted, pinned to commit
+  `9c123eea`.
+- **The installer removes its image step in live-ISO mode**, and the image step is where "ask the release line" lives. So the flow in this
+  spec (GPU preselect, then release line, then disk/user) only exists in a network-install ISO: no `live-iso-mode` flag, no `local_imgref`,
+  no embedded payload. That is what was built. An offline ISO would have to embed one image and could not ask the line.
+- **The installer's own NVIDIA logic is vendor-only and has no override** (`Systeminfo.has_nvidia_gpu`, any NVIDIA incl. Pascal; it also installs
+  the `nvidia_imgref` and tracks the base). Not used. Wrasse's catalog lists both flavors as separate leaves and `wrasse-gpu-detect`
+  chooses the preselection with Turing+ from NVIDIA's open-module device list.
+
+Blocked or left open (not decided here):
+- *blocked (pending decision 3):* the catalog has a `wrasse-nvidia:reimagined` leaf only because `build-matrix.json` says `"nvidia": true`
+  for `reimagined`; flip that boolean and the leaf disappears (tested). No other change.
+- *blocked (pending decision 4):* the preselected line is hardcoded to `stable` in `wrasse-installer-config` (`default_line`). This is a
+  default, not the decision; change it there if `reimagined` should be the feature-first default.
+- *blocked (Phase 2 signing and base images):* the ISO needs `ghcr.io/wrasse-os/wrasse-nvidia:<tag>` to exist and be pullable; today
+  `reimagined`/`next` cells fail closed (see Phase 2 notes) and the signing key is not set up. The in-image `policy.json` covers only
+  `ghcr.io/ublue-os`, which matters for installing from `ghcr.io/wrasse-os` (the installer/fisherman path was not checked for signature policy).
+- Unverified (needs a CI run, then a VM with UEFI and a real NVIDIA machine): that dakota-iso's `build-live-squashfs.sh` works without
+  `--oci-image`; that `systemctl enable` and the unit's `ConditionPathExists=/run/initramfs/live` hold in the live container; that the image
+  step opens with the detected group expanded; that fisherman network-installs a Fedora ostree image with `grub2`/`btrfs`/`composefs: false` (copied
+  from the Bluefin catalog entry, not confirmed against Wrasse's image); Secure Boot (the live ESP the tooling builds is systemd-boot, so
+  Secure Boot likely must be off to boot the ISO, as for dakota-iso's Utah builds; MOK enrollment is Phase 8 docs).
+- The ISO volume label stays `DAKOTA_LIVE` (hardcoded upstream).
 
 ## Phase 8: docs
 
