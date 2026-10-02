@@ -41,7 +41,15 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
 
 ## DX
 
-- **Removed Cockpit** (all `cockpit-*` packages) from the DX build. Only edit made to DX build logic.
+- **Removed the DX image build path** (`build_files/shared/build-dx.sh`, the `IMAGE_FLAVOR=dx` branch in `build.sh`, the
+  `IMAGE_FLAVOR` Containerfile arg, `build_files/dx/00-dx.sh` and `01-tests-dx.sh`, all of `system_files/dx/`). Why: DX is no
+  longer an image (SPEC Phase 3); it is the `wrasse-dx.raw` sysext added in the next entry. The old Cockpit removal in the DX build
+  went with it (Cockpit is already gone from the base image).
+- **Dropped with the old DX, not carried into the sysext**: `80-vfio.conf` (a dracut file cannot live in a sysext, and it never
+  applied because DX ran after the initramfs step), the Incus packages, units and tmpfiles, ROCm, `bluefin-dx-groups`
+  (replaced by `ujust dx on` adding the user to groups), Docker Inc's `docker-ce` repo packages, and a few extras that the spec
+  list does not name (android-tools, ydotool, wtype, p7zip, genisoimage, git-svn, git-subtree, qemu-user-*, osbuild-selinux).
+  Re-adding one is a one-line edit to `PACKAGES` in `build_files/dx/build-sysext.sh`.
 
 ## Shell
 
