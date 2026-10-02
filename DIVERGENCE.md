@@ -167,3 +167,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   final size" is answered by the first CI run.
 - **`docs/DX-SELINUX-CHECKLIST.md`**: bring-up and SELinux test list for the DX sysext (labels, Docker, libvirt/QEMU, VS Code, perf,
   waydroid, reboot, update and rollback, off). Written because none of it could be run without a build.
+
+## Phase 4: terminal
+
+- **Zellij in the default brew set** (`homebrew/preinstall.d/system-cli.Brewfile`): added `brew "zellij"`. `brew-preinstall` is
+  content-addressed on the Brewfile hash, so existing users get it on the next login after the update and it enters the managed
+  set. No change to `brew-preinstall` itself. Nothing in fish or bash config starts Zellij (it would hijack VS Code terminals and SSH).
