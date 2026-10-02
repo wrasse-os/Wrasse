@@ -194,3 +194,14 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **Containerfile builds the `wrasse` CLI** (`wrasse-build` stage, `rust:alpine` pinned by digest, `cargo build
   --release --locked`, musl so the binary is static) and copies it to `/usr/bin/wrasse` through `common-build`'s
   `/out/shared`, like umotd. Why: ship the CLI in the image. Nothing was built locally.
+
+## Phase 5: Claude Code integration
+
+- **System skill `/usr/share/wrasse/skills/wrasse/SKILL.md`** and user-setup hook `30-wrasse-agent-skill.sh`, which symlinks
+  it into `~/.claude/skills/wrasse` and `~/.agents/skills/wrasse` once per user (`version-script`, so a deleted link stays
+  deleted; an existing file or directory is never replaced). Teaches the read-only root, `wrasse install` (with `--json`, exit
+  code 3 and the `policy_required` error), Flatpak/brew/distrobox/ujust routing, `bootc` instead of rpm-ostree, DX, memory
+  tuning locations. Frontmatter is only `name` and `description` and sets no `allowed-tools`, so nothing is pre-approved.
+  Why: spec Phase 5. Docs (code.claude.com/docs/en/skills) confirm `~/.claude/skills/<name>/SKILL.md` and that symlinked
+  skill directories are followed; they do not mention `~/.agents/skills`, which is kept only because the spec asks for it
+  (other agent tools read it).
