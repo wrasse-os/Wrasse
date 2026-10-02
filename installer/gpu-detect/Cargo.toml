@@ -1,0 +1,26 @@
+[package]
+name = "wrasse-gpu-detect"
+version = "0.1.0"
+edition = "2021"
+description = "Picks the Wrasse image flavor (wrasse or wrasse-nvidia) for the live ISO installer from the PCI devices"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "wrasse_gpu_detect"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wrasse-gpu-detect"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# No dependencies on purpose (std only): the ISO workflow builds it as a static musl binary.
+# Not part of any workspace: it builds on its own, like cli/.
+[workspace]

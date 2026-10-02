@@ -228,3 +228,13 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 
 - **Build checks for the Claude Code integration** in `20-tests.sh`: files exist, `systemd-analyze --user verify` of the
   slice, `systemd-oomd.service` in the enabled-units list. Why: a missing stub or a disabled oomd would silently break Phase 5.
+
+## Phase 7: installer + ISO
+
+- **`installer/gpu-detect/` (`wrasse-gpu-detect`, Rust, std only).** Reads `/sys/bus/pci/devices` (display classes only, so NVIDIA's
+  HDMI audio function is ignored) and prints `wrasse-nvidia` for a Turing or newer NVIDIA GPU, else `wrasse`. "Turing or newer" is
+  NVIDIA's own supported-device table for the open kernel modules (`NVIDIA/open-gpu-kernel-modules` README, tag 615.71.09), turned
+  into a sorted ID list by `installer/gen-nvidia-ids.sh` (294 device IDs); Pascal and older are absent. Override precedence:
+  `--override`, `$WRASSE_GPU`, `wrasse.gpu=nvidia|default|auto` on the kernel command line, `/etc/wrasse/installer-gpu`; an invalid
+  value is reported and skipped. Why: the installer's own detection (`Systeminfo.has_nvidia_gpu`) is vendor-only (any NVIDIA, Pascal
+  included, which the open driver cannot drive) and has no override. 15 tests, no hardware needed.
