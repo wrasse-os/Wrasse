@@ -116,6 +116,7 @@ rows:
         pl: Pracuj mądrzej
     appids:
       list:
+      - com.github.PintaProject.Pinta
       - com.collaboraoffice.Office
       - org.onlyoffice.desktopeditors
       - com.slack.Slack
