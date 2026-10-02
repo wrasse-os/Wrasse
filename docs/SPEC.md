@@ -8,7 +8,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 
 | Phase | Title | Status |
 |---|---|---|
-| 0 | Recon + spec | in progress |
+| 0 | Recon + spec | done |
 | 1 | Base image changes | done (except `brand:`, deferred by the user) |
 | 2 | CI + release lines | partial: implemented, 3 items blocked (see "Phase 2 status notes") |
 | 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
