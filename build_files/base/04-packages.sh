@@ -116,6 +116,11 @@ esac
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."
 dnf -y install "${FEDORA_PACKAGES[@]}"
 
+# fish is the default login shell for new users; root and existing users keep bash
+sed -i 's|^SHELL=.*|SHELL=/usr/bin/fish|' /etc/default/useradd
+grep -qx 'SHELL=/usr/bin/fish' /etc/default/useradd
+grep -qx '/usr/bin/fish' /etc/shells
+
 dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
 dnf config-manager setopt tailscale-stable.enabled=0
 dnf -y install --enablerepo='tailscale-stable' tailscale

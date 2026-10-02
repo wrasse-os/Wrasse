@@ -42,3 +42,8 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
 ## DX
 
 - **Removed Cockpit** (all `cockpit-*` packages) from the DX build. Only edit made to DX build logic.
+
+## Shell
+
+- **fish is the default login shell for new users** (`SHELL=` in `/etc/default/useradd`, set in
+  `04-packages.sh` and asserted). Bash stays installed; root's shell is unchanged.
