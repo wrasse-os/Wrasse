@@ -4,11 +4,13 @@ set -eoux pipefail
 
 echo "::group:: Copy Files"
 
+# The base is plain Fedora Silverblue. ublue-os/main installs dnf5 only when the base lacks it; do the same.
+if ! rpm -q dnf5 dnf5-plugins >/dev/null 2>&1; then
+    rpm-ostree install dnf5 dnf5-plugins
+fi
+
 # Speeds up local builds
 dnf config-manager setopt keepcache=1
-
-# We need to remove this package here because lots of files we add from common override the rpm files and they also go away when you do `dnf remove`
-dnf remove -y ublue-os-luks ublue-os-just ublue-os-udev-rules ublue-os-signing ublue-os-update-services
 
 # Keep *-logos in RPM DB for downstream package installations
 # We are not allowed to ship an empty fedora-logos package
@@ -26,6 +28,9 @@ echo "::endgroup::"
 
 # Generate image-info.json
 /ctx/build_files/base/00-image-info.sh
+
+# What ublue-os/main added on top of Fedora and this image still needs
+/ctx/build_files/base/01-fedora-base.sh
 
 # Install Kernel and Akmods
 /ctx/build_files/base/03-install-kernel-akmods.sh

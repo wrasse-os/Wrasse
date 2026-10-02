@@ -35,6 +35,16 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - The base image is resolved by digest at build time (`silverblue-main:<fedora>`, cosign-verified); the `silverblue-main-NN` pins are
   gone from `image-versions.yml` so Fedora rollovers do not stall on hand-edited pins. If ublue has no base for that version
   (branched Fedora), the cell fails closed.
+- `build_files/base/01-fedora-base.sh` (run before the kernel swap) reproduces what ublue-os/main added on top of Fedora and the
+  image still depends on: negativo17 `fedora-multimedia` at priority 90 with the mesa/libva/intel overrides (versionlocked),
+  main's `packages.json` package set (ffmpeg, codecs, distrobox, ptyxis, fzf, htop, nvtop, udev rule packages, ...),
+  `oversteer-udev` from the ublue-os/packages COPR, removal of `fedora-flathub-remote`, `fedora-third-party` and
+  `totem-video-thumbnailer`, `/etc/flatpak/remotes.d/flathub.flatpakrepo`, the linuxbrew `sudo` secure_path, the pinned CoreOS
+  sulogin generator, plus `copr.vendor.conf`, the 5-day coredump tmpfiles rule and zstd dracut compression in `system_files/`.
+  `build.sh` no longer runs `dnf remove ublue-os-*` (plain Fedora does not have them) and installs dnf5 if the base lacks it.
+  Why: the base is no longer `silverblue-main`. Not reproduced: `ublue-os-just/-luks/-udev-rules/-signing/-update-services` (this
+  repo carries its own copies), `fedora-repos-archive`, the on-device `cosign` RPM (excluded in `04-packages.sh`), the
+  `rm /usr/bin/chsh`, the staging COPR.
 - `FEDORA_PRERELEASE` build arg replaces `UBLUE_IMAGE_TAG == beta` in `03-install-kernel-akmods.sh` and `validate-repos.sh`.
 - `clean.yml` lists only the two Wrasse images. `changelogs.py`: registry `ghcr.io/wrasse-os/`, no dx section. Renovate: dropped the
   `silverblue-main` digest rule.
