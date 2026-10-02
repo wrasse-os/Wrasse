@@ -1,0 +1,19 @@
+{
+  "lines": {
+    "reimagined": {
+      "akmods_flavor": "main",
+      "nvidia": true,
+      "kernel_pin": ""
+    },
+    "next": {
+      "akmods_flavor": "main",
+      "nvidia": true,
+      "kernel_pin": ""
+    },
+    "stable": {
+      "akmods_flavor": "coreos-stable",
+      "nvidia": true,
+      "kernel_pin": ""
+    }
+  }
+}

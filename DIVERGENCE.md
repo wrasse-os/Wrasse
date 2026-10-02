@@ -82,3 +82,11 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   utilities, DistroShelf, Ignition, Impression, Contacts, Calendar, Maps, Weather, Showtime, Refine and the Wrasse set
   (Chromium, Clapper, Extension Manager, Flatseal, Mission Center, Bazaar). Video mime defaults stay on Showtime. Loupe stays; Warehouse was added. The Gradia Flatpak stays a default (only its shell extension was removed).
   Pinta is no longer a default; it is listed in Bazaar's curated "Office & Productivity" section instead.
+
+## CI + release lines
+
+- **Fedora version resolver** (`.github/scripts/resolve-lines.sh`) and **matrix config** (`.github/build-matrix.json`): resolves the
+  Fedora version for each release line from Bodhi (`current` = final, `pending` non-rawhide = branched) and the `releases/test/NN_Beta/`
+  directory on dl.fedoraproject.org (beta). Why: the spec wants versions resolved automatically, and Bluefin's version lookup read
+  a ublue base-image manifest that does not exist for branched Fedora. The config holds the per-line akmods flavor, kernel pin and
+  the `nvidia` switch (one boolean per line) that decides whether a line gets an nvidia image.
