@@ -173,3 +173,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **Zellij in the default brew set** (`homebrew/preinstall.d/system-cli.Brewfile`): added `brew "zellij"`. `brew-preinstall` is
   content-addressed on the Brewfile hash, so existing users get it on the next login after the update and it enters the managed
   set. No change to `brew-preinstall` itself. Nothing in fish or bash config starts Zellij (it would hijack VS Code terminals and SSH).
+- **`ujust multiplexer zellij|none|status`** (`60-custom.just`): sets or resets `use-custom-command` and `custom-command` on the
+  Ptyxis profile (schema `org.gnome.Ptyxis.Profile`, relocatable at `/org/gnome/Ptyxis/Profiles/<uuid>/`; keys checked against the
+  installed ptyxis 50.1 schema). The profile is the one named by `org.gnome.Ptyxis default-profile-uuid`, not the hardcoded UUID in
+  the vendored dconf palette file, because Ptyxis generates its own UUID at first launch (this machine's is not
+  `2871e802...`). `none` uses `gsettings reset`, so it returns to the schema default rather than writing a value. Zellij is
+  launched by absolute brew path since a GUI-launched Ptyxis may not have brew on PATH.
