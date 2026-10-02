@@ -1,4 +1,5 @@
 {
+  "base_image": "quay.io/fedora/fedora-silverblue",
   "lines": {
     "reimagined": {
       "akmods_flavor": "main",

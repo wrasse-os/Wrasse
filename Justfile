@@ -123,20 +123,28 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
         fedora_prerelease=$(.github/scripts/resolve-lines.sh prerelease "${tag}")
     fi
 
-    # Base image: resolve the digest once and build from the digest. If the base
-    # image for this Fedora version does not exist yet (ublue does not publish
-    # bases for branched Fedora), fail closed so this cell pushes nothing.
-    if ! base_image_sha=$(skopeo inspect --retry-times 3 --format '{{ '{{.Digest}}' }}' docker://ghcr.io/ublue-os/"${base_image_name}"-main:"${fedora_version}"); then
-        echo "::error::ghcr.io/ublue-os/${base_image_name}-main:${fedora_version} does not exist; refusing to build this cell." >&2
+    # Base image: plain Fedora Silverblue from quay.io (config: "base_image" in the build matrix). Resolve the
+    # digest once and build from the digest. If the tag for this Fedora version does not exist, fail closed so
+    # this cell pushes nothing. Fedora publishes no cosign or sigstore signature for this repository (checked:
+    # no .sig tag, no OCI referrers, no lookaside), so the digest pin below is the only integrity control.
+    base_image=$(jq -er '.base_image' .github/build-matrix.json)
+    if ! base_image_sha=$(skopeo inspect --retry-times 3 --format '{{ '{{.Digest}}' }}' docker://"${base_image}":"${fedora_version}"); then
+        echo "::error::${base_image}:${fedora_version} does not exist; refusing to build this cell." >&2
         exit 1
     fi
     if [[ ! "${base_image_sha}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
         echo "::error::Unexpected base image digest '${base_image_sha}'." >&2
         exit 1
     fi
-
-    # Verify Base Image with cosign, pinned by digest
-    {{ just }} verify-container "${base_image_name}-main:${fedora_version}@${base_image_sha}"
+    # Inspect the digest, not the tag, so the checks below describe exactly what gets built.
+    base_json=$(skopeo inspect --retry-times 3 docker://"${base_image}"@"${base_image_sha}")
+    # The tag must really be this Fedora release: never Rawhide (46 is Rawhide today), never a mislabeled image.
+    base_kernel=$(jq -r '.Labels["ostree.linux"] // ""' <<<"${base_json}")
+    base_version=$(jq -r '.Labels["org.opencontainers.image.version"] // ""' <<<"${base_json}")
+    if [[ "${base_kernel}" != *".fc${fedora_version}."* || "${base_version}" != "${fedora_version}."* ]]; then
+        echo "::error::${base_image}:${fedora_version} is not Fedora ${fedora_version} (ostree.linux='${base_kernel}', version='${base_version}'); refusing to build this cell." >&2
+        exit 1
+    fi
 
     # AKMODS: resolve the kernel and each image digest once, cosign-verify the
     # digests, and build from the digests only. The mutable tags are never read
@@ -172,6 +180,7 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
     BUILD_ARGS+=("--build-arg" "AKMODS_DIGEST=${AKMODS_DIGEST}")
     BUILD_ARGS+=("--build-arg" "AKMODS_NVIDIA_DIGEST=${AKMODS_NVIDIA_DIGEST:-}")
     BUILD_ARGS+=("--build-arg" "AKMODS_ZFS_DIGEST=${AKMODS_ZFS_DIGEST:-}")
+    BUILD_ARGS+=("--build-arg" "BASE_IMAGE=${base_image}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_NAME=${base_image_name}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_SHA=${base_image_sha}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE={{ brew_image }}")
@@ -320,8 +329,8 @@ rechunk $image="wrasse" $tag="reimagined" $flavor="default" ghcr="0" pipeline="0
 
     # Cleanup Space during Github Action
     if [[ "{{ ghcr }}" == "1" ]]; then
-        base_image_name=silverblue-main
-        ID=$(${SUDOIF} ${PODMAN} images --filter reference=ghcr.io/ublue-os/"${base_image_name}":${fedora_version} --format "{{ '{{.ID}}' }}")
+        base_image=$(jq -er '.base_image' .github/build-matrix.json)
+        ID=$(${SUDOIF} ${PODMAN} images --filter reference="${base_image}":${fedora_version} --format "{{ '{{.ID}}' }}")
         if [[ -n "$ID" ]]; then
             ${PODMAN} rmi "$ID"
         fi
