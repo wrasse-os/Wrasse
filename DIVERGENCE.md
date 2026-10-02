@@ -58,6 +58,7 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
   as ublue-os/main does on a plain Fedora base; `19-initramfs.sh` still builds the initramfs. Why: unverified without a build, but main hit
   the failure with the same procedure.
 - `FEDORA_PRERELEASE` build arg replaces `UBLUE_IMAGE_TAG == beta` in `03-install-kernel-akmods.sh` and `validate-repos.sh`.
+- `changelogs.py` writes no output and exits 0 when the line has no published image; `generate-release.yml` then skips the release instead of failing.
 - `clean.yml` lists only the two Wrasse images. `changelogs.py`: registry `ghcr.io/wrasse-os/`, no dx section. Renovate: dropped the
   `silverblue-main` digest rule.
 - `.github/workflows/build-iso.yml` (manual only): see Installer.

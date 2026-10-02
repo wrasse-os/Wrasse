@@ -492,6 +492,9 @@ def main():
         target = "stable"
 
     manifests = get_manifests(target)
+    if not manifests:
+        print(f"No published image for {target}; nothing to release. Writing no output files.")
+        return
     prev, curr = get_tags(target, manifests)
     print(f"Previous tag: {prev}")
     print(f" Current tag: {curr}")

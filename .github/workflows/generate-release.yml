@@ -53,13 +53,18 @@ jobs:
         shell: bash
         run: |
           just changelogs "${{ matrix.version }}" "${{ inputs.handwritten }}"
+          # changelogs.py writes no output.env when the line has no published image yet; skip the release then.
+          if [[ ! -f ./output.env ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           source ./output.env
           echo "title=${TITLE}" >> $GITHUB_OUTPUT
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
-        if: contains(fromJson('["stable"]'), matrix.version) && (github.event.schedule == '0 1 * * TUE' || contains(fromJson('["workflow_dispatch", "workflow_call"]'), github.event_name))
+        if: steps.generate-release-text.outputs.skip != 'true' && contains(fromJson('["stable"]'), matrix.version) && (github.event.schedule == '0 1 * * TUE' || contains(fromJson('["workflow_dispatch", "workflow_call"]'), github.event_name))
         with:
           name: ${{ steps.generate-release-text.outputs.title }}
           tag_name: ${{ steps.generate-release-text.outputs.tag }}
