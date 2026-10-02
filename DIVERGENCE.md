@@ -96,3 +96,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **Gradia Capture GNOME extension is installed but not enabled.** Re-added the submodule and build step; it is not in
   the default `enabled-extensions`. `ujust gradia-extension on|off|status` toggles it per user (`60-custom.just`).
   Why: users who do not want their GNOME Shell modified are not forced into it.
+- **akmods are pulled by digest** (`just resolve-akmods`, `03-install-kernel-akmods.sh`, `Containerfile`): the kernel is read once from
+  the rolling `akmods:<flavor>-<fedora>` tag (or the kernel pin), each akmods image (`akmods`, `akmods-nvidia-open`, and
+  `akmods-zfs` for coreos flavors) is resolved to a digest once, cosign-verified by digest, and passed in as `AKMODS_DIGEST`,
+  `AKMODS_NVIDIA_DIGEST`, `AKMODS_ZFS_DIGEST` build args. The install script now requires them and copies `@sha256:`, so no tag is
+  re-resolved inside the build (the TOCTOU in projectbluefin issue #1264). A missing image or failed verification exits non-zero,
+  which fails that matrix cell before anything is pushed.

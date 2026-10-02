@@ -146,21 +146,16 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
     # Verify Base Image with cosign, pinned by digest
     {{ just }} verify-container "${base_image_name}-main:${fedora_version}@${base_image_sha}"
 
-    # Kernel Release/Pin
-    if [[ -z "${kernel_pin:-}" ]]; then
-        kernel_release=$(skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/akmods:"${akmods_flavor}"-"${fedora_version}" | jq -r '.Labels["ostree.linux"]')
-    else
-        kernel_release="${kernel_pin}"
-    fi
-
-    # Verify Containers with Cosign
-    {{ just }} verify-container "akmods:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    if [[ "${akmods_flavor}" =~ coreos ]]; then
-        {{ just }} verify-container "akmods-zfs:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    fi
-    if [[ "${flavor}" =~ nvidia-open ]]; then
-        {{ just }} verify-container "akmods-nvidia-open:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    fi
+    # AKMODS: resolve the kernel and each image digest once, cosign-verify the
+    # digests, and build from the digests only. The mutable tags are never read
+    # again after this point (including inside the container build).
+    AKMODS_ENV=$({{ just }} resolve-akmods "${akmods_flavor}" "${fedora_version}" "${flavor}" "${kernel_pin:-}")
+    while IFS='=' read -r key value; do
+        case "${key}" in
+            KERNEL | AKMODS_DIGEST | AKMODS_NVIDIA_DIGEST | AKMODS_ZFS_DIGEST) declare "${key}=${value}" ;;
+            *) echo "Unexpected resolve-akmods output: ${key}" >&2; exit 1 ;;
+        esac
+    done <<<"${AKMODS_ENV}"
 
     {{ just }} verify-container "brew:latest@${brew_image_sha}" ghcr.io/ublue-os https://raw.githubusercontent.com/ublue-os/brew/refs/heads/main/cosign.pub
 
@@ -190,6 +185,9 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
         target="dx"
     fi
     BUILD_ARGS+=("--build-arg" "AKMODS_FLAVOR=${akmods_flavor}")
+    BUILD_ARGS+=("--build-arg" "AKMODS_DIGEST=${AKMODS_DIGEST}")
+    BUILD_ARGS+=("--build-arg" "AKMODS_NVIDIA_DIGEST=${AKMODS_NVIDIA_DIGEST:-}")
+    BUILD_ARGS+=("--build-arg" "AKMODS_ZFS_DIGEST=${AKMODS_ZFS_DIGEST:-}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_NAME=${base_image_name}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_SHA=${base_image_sha}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE={{ brew_image }}")
@@ -197,7 +195,7 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
     BUILD_ARGS+=("--build-arg" "FEDORA_MAJOR_VERSION=${fedora_version}")
     BUILD_ARGS+=("--build-arg" "IMAGE_NAME=${image_name}")
     BUILD_ARGS+=("--build-arg" "IMAGE_VENDOR={{ repo_organization }}")
-    BUILD_ARGS+=("--build-arg" "KERNEL=${kernel_release}")
+    BUILD_ARGS+=("--build-arg" "KERNEL=${KERNEL}")
     BUILD_ARGS+=("--build-arg" "VERSION=${ver}")
     if [[ -z "$(git status -s)" ]]; then
         BUILD_ARGS+=("--build-arg" "SHA_HEAD_SHORT=$(git rev-parse --short HEAD)")
@@ -211,7 +209,7 @@ build $image="bluefin" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipelin
     LABELS=()
     LABELS+=("--label" "org.opencontainers.image.title=${image_name}")
     LABELS+=("--label" "org.opencontainers.image.version=${ver}")
-    LABELS+=("--label" "ostree.linux=${kernel_release}")
+    LABELS+=("--label" "ostree.linux=${KERNEL}")
     LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/README.md")
     LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
     LABELS+=("--label" "org.opencontainers.image.description=The next generation Linux workstation, designed for reliability, performance, and sustainability.")
@@ -560,6 +558,60 @@ secureboot $image="bluefin" $tag="latest" $flavor="main":
         ${PODMAN} rm -f "${temp_name}"
     fi
     exit "$returncode"
+
+# Resolve akmods digests once and cosign-verify them. Prints shell assignments
+# (KERNEL, AKMODS_DIGEST, AKMODS_NVIDIA_DIGEST, AKMODS_ZFS_DIGEST) on stdout.
+# Fails closed: a missing image or a failed verification exits non-zero.
+[group('Utility')]
+[private]
+resolve-akmods akmods_flavor fedora_version flavor kernel_pin="":
+    #!/usr/bin/bash
+    set -eou pipefail
+
+    akmods_flavor="{{ akmods_flavor }}"
+    fedora_version="{{ fedora_version }}"
+    kernel_pin="{{ kernel_pin }}"
+
+    # Kernel release: the pin, else the one the rolling akmods tag currently carries.
+    # This is the only place a mutable tag is read.
+    if [[ -n "${kernel_pin}" ]]; then
+        kernel_release="${kernel_pin}"
+    else
+        kernel_release=$(skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/akmods:"${akmods_flavor}"-"${fedora_version}" | jq -r '.Labels["ostree.linux"]') || kernel_release=""
+    fi
+    if [[ ! "${kernel_release}" =~ ^[0-9A-Za-z._-]+$ ]]; then
+        echo "::error::No akmods image for ${akmods_flavor}-${fedora_version}; refusing to build this cell." >&2
+        exit 1
+    fi
+
+    # Tag to digest, once, then verify the digest.
+    resolve() {
+        local name="$1" digest
+        if ! digest=$(skopeo inspect --retry-times 3 --format '{{ '{{.Digest}}' }}' docker://ghcr.io/ublue-os/"${name}":"${akmods_flavor}"-"${fedora_version}"-"${kernel_release}"); then
+            echo "::error::${name}:${akmods_flavor}-${fedora_version}-${kernel_release} does not exist; refusing to build this cell." >&2
+            exit 1
+        fi
+        if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Unexpected digest '${digest}' for ${name}." >&2
+            exit 1
+        fi
+        {{ just }} verify-container "${name}@${digest}" >&2
+        echo "${digest}"
+    }
+
+    # Assign before printing so a failed resolve stops the recipe (set -e does
+    # not see failures inside echo "$(...)").
+    akmods_digest=$(resolve akmods)
+    echo "KERNEL=${kernel_release}"
+    echo "AKMODS_DIGEST=${akmods_digest}"
+    if [[ "{{ flavor }}" =~ nvidia ]]; then
+        nvidia_digest=$(resolve akmods-nvidia-open)
+        echo "AKMODS_NVIDIA_DIGEST=${nvidia_digest}"
+    fi
+    if [[ "${akmods_flavor}" =~ coreos ]]; then
+        zfs_digest=$(resolve akmods-zfs)
+        echo "AKMODS_ZFS_DIGEST=${zfs_digest}"
+    fi
 
 # Get Fedora Version of an image
 [group('Utility')]
