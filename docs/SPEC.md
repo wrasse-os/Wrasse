@@ -10,7 +10,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 |---|---|---|
 | 0 | Recon + spec | in progress |
 | 1 | Base image changes | done (except `brand:`, deferred by the user) |
-| 2 | CI + release lines | todo |
+| 2 | CI + release lines | partial: implemented, 3 items blocked (see "Phase 2 status notes") |
 | 3 | DX as a sysext | todo |
 | 4 | Terminal (Zellij, multiplexer) | todo |
 | 5 | Claude Code integration | todo |
@@ -29,7 +29,10 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 1. `wrasse install`: when a package exists in both Flatpak and brew, auto-pick or ask the user?
 2. Claude Code integration in every image, or only after `ujust dx on`?
 3. Does `reimagined` get an nvidia flavor, given akmods often lag on branched Fedora?
+   *blocked (Phase 2): `.github/build-matrix.json` has `"nvidia": true` for `reimagined` only as a placeholder matching the
+   spec's "6 images"; flip that one boolean to change it. Not a decision.*
 4. Is `reimagined` also the channel where new Wrasse features land first?
+   *blocked (Phase 2): nothing in CI depends on it; no per-line feature gating was added.*
 
 ## Repo facts (verified in Phase 0)
 
@@ -93,6 +96,36 @@ GPU flavors: default (Mesa) and nvidia (open driver only, Turing+). Image names:
 
 File map: `.github/workflows/*`, `Justfile` (tags, `fedora_version`, `image_name`, akmods flavor/verify), `image-versions.yml`,
 `build_files/base/03-install-kernel-akmods.sh`, `Containerfile` (akmods ARGs), `.github/renovate.json5`, `.github/changelogs.py`.
+
+### Phase 2 status notes (verified against live data on 2026-10-02)
+
+Done: `build.yml` single matrix (reimagined/next/stable x default/nvidia, images `wrasse`, `wrasse-nvidia`); Fedora versions
+resolved in CI by `.github/scripts/resolve-lines.sh` (Bodhi + `releases/test/NN_Beta/`); akmods and base image resolved to digests once,
+cosign-verified, built `@sha256:`; cells fail closed and are independent; gts/lts/stable-daily/dx removed from CI, Justfile and
+`changelogs.py`; secrets listed in `docs/CI-SECRETS.md`; overview in `docs/CI.md`. Resolver output on that date: stable 44, beta 45, branched 45,
+so next = reimagined = 45.
+
+**Finding: ublue base images do not publish branched Fedora.** `ghcr.io/ublue-os/silverblue-main` has only tags `43`, `44` (and `latest`) while
+Fedora 45 is branched and in beta; `ghcr.io/ublue-os/base-main` only `latest`, `gts`, `43`, `44`. `ghcr.io/ublue-os/akmods` and
+`akmods-nvidia-open` do publish `main-45-*` (kernel 7.2.8-300.fc45). `quay.io/fedora/fedora-silverblue` has `44`, `45`, `46`
+(46 is Rawhide), so a branched base exists upstream. Consequence: today the `reimagined` and `next` cells (both F45) fail closed at
+"base image does not exist" and keep their last tag; `stable` (F44) builds. Options (user decides, not made):
+1. Wait for ublue to publish `silverblue-main:45` (it will likely appear at or after the final release). Nothing to change.
+2. Build `reimagined`/`next` `FROM quay.io/fedora/fedora-silverblue:<ver>` while ublue has no base, losing whatever
+   `silverblue-main` adds (ublue repo/policy/service tweaks), which would have to be reproduced in `build_files`.
+3. Keep both lines on the newest version ublue publishes until then (breaks the "newest branched" rule).
+Status: `blocked` on this choice. The resolver and matrix need no change for any of them; only the base image reference in
+`just build` (and a per-line base setting in `.github/build-matrix.json` if option 2) would.
+
+Other blocked or open items:
+- `reimagined` nvidia and `reimagined` as the feature-first channel: pending decisions 3 and 4 (placeholder noted above).
+- Signing: images are signed with `SIGNING_SECRET`, but the in-image trust policy only covers `ghcr.io/ublue-os` (`policy.json`,
+  `registries.d`, `ublue-os.pub`), and `/cosign.pub` is still Bluefin's. Needs the user's key; steps in `docs/CI-SECRETS.md`.
+- On-device leftovers that still mention lts/gts/testing and the Bluefin repo (`ujust changelogs`, `ujust toggle-testing`, `ublue-image-repo`
+  routing in `system_files/`) were not touched: they are runtime behavior tied to `brand:` and to what the `testing` channel becomes.
+- Not verified without CI: the whole workflow end to end (actionlint passes with the pre-existing `ubuntu-26.04` label ignored),
+  `just build` through the Containerfile (a dry run with `PODMAN=echo` produced correct build args), and Bodhi's state for a branched release
+  after the final release day (the resolver treats `current` as final).
 
 ## Phase 3: DX as a sysext
 
