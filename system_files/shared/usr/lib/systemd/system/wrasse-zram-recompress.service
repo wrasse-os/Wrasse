@@ -10,7 +10,7 @@ ConditionPathExists=/sys/block/zram0/recompress
 # pages lz4 already packed below 1 KiB, where zstd gains too little.
 [Service]
 Type=oneshot
-ExecStart=-/bin/sh -c 'echo "type=idle threshold=1024" > /sys/block/zram0/recompress'
+ExecStart=-/bin/sh -c 'echo "type=idle threshold=1024 priority=1" > /sys/block/zram0/recompress'
 ExecStart=/bin/sh -c 'echo all > /sys/block/zram0/idle'
 Nice=19
 CPUSchedulingPolicy=idle

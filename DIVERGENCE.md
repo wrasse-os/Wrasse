@@ -63,3 +63,4 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **Base**: zram-generator drop-in (lz4 primary, `zstd(level=3)` recompression), `wrasse-zram-recompress`
   service and timer (timer enabled in `17-cleanup.sh`), DAMON_RECLAIM tmpfiles config, and
   `vm.watermark_scale_factor = 125`. Why: start background reclaim into zram before allocations stall.
+- **zram recompress `priority=1`**: write `priority=1` so recompression uses the zstd slot explicitly.
