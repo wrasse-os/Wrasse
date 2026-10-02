@@ -27,30 +27,6 @@ rm -rf /usr/share/gnome-shell/extensions/blur-my-shell@aunetx/build
 mv /usr/share/gnome-shell/extensions/tmp/caffeine/caffeine@patapon.info /usr/share/gnome-shell/extensions/caffeine@patapon.info
 glib-compile-schemas --strict /usr/share/gnome-shell/extensions/caffeine@patapon.info/schemas
 
-# Dash to Dock
-make -C /usr/share/gnome-shell/extensions/dash-to-dock@micxgx.gmail.com
-glib-compile-schemas --strict /usr/share/gnome-shell/extensions/dash-to-dock@micxgx.gmail.com/schemas
-
-# Gradia Capture
-bash /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/build.sh
-unzip -o /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/gradia-integration@alexandervanhee.github.io.shell-extension.zip -d /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io
-rm -f /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/gradia-integration@alexandervanhee.github.io.shell-extension.zip
-glib-compile-schemas --strict /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/schemas
-
-# GSConnect (commented out until G49 support)
-meson setup --prefix=/usr /usr/share/gnome-shell/extensions/gsconnect@andyholmes.github.io /usr/share/gnome-shell/extensions/gsconnect@andyholmes.github.io/_build
-meson install -C /usr/share/gnome-shell/extensions/gsconnect@andyholmes.github.io/_build --skip-subprojects
-# GSConnect installs schemas to /usr/share/glib-2.0/schemas and meson compiles them automatically
-
-# Logo Menu
-# xdg-terminal-exec is required for this extension as it opens up terminals using that script
-install -Dpm0755 -t /usr/bin /usr/share/gnome-shell/extensions/logomenu@aryan_k/distroshelf-helper
-install -Dpm0755 -t /usr/bin /usr/share/gnome-shell/extensions/logomenu@aryan_k/missioncenter-helper
-glib-compile-schemas --strict /usr/share/gnome-shell/extensions/logomenu@aryan_k/schemas
-
-# Search Light
-glib-compile-schemas --strict /usr/share/gnome-shell/extensions/search-light@icedman.github.com/schemas
-
 rm /usr/share/glib-2.0/schemas/gschemas.compiled
 glib-compile-schemas /usr/share/glib-2.0/schemas
 

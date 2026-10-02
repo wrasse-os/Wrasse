@@ -38,11 +38,6 @@ if version-script "oem-${VENDOR}" user 2; then
         systemctl --user daemon-reload
         systemctl --user enable --now asusd-user.service || true
     fi
-
-    if [[ -f "${OEM_DIR}/${VENDOR}/logo" ]]; then
-        dconf write /org/gnome/shell/extensions/custom-command-list/menuicon-setting \
-            "'$(cat "${OEM_DIR}/${VENDOR}/logo")'"
-    fi
 fi
 
 if [[ "${VENDOR}" == "Framework" && "${PRODUCT_NAME}" == "Framework Desktop" ]] && \

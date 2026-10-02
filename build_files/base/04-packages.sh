@@ -61,7 +61,6 @@ FEDORA_PACKAGES=(
     make
     mesa-libGLU
     mozc
-    nautilus-gsconnect
     oddjob-mkhomedir
     opendyslexic-fonts
     openssh-askpass

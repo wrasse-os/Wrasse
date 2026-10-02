@@ -2,7 +2,7 @@
 
 [org.gnome.shell]
 favorite-apps = ['org.mozilla.firefox.desktop', 'org.mozilla.Thunderbird.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop', 'org.gnome.Software.desktop', 'code.desktop']
-enabled-extensions = ['appindicatorsupport@rgcjonas.gmail.com', 'bazaar-integration@kolunmi.github.io', 'caffeine@patapon.info', 'blur-my-shell@aunetx', 'custom-command-list@storageb.github.com', 'dash-to-dock@micxgx.gmail.com', 'gradia-integration@alexandervanhee.github.io', 'gsconnect@andyholmes.github.io', 'search-light@icedman.github.com']
+enabled-extensions = ['appindicatorsupport@rgcjonas.gmail.com', 'bazaar-integration@kolunmi.github.io', 'caffeine@patapon.info', 'blur-my-shell@aunetx']
 
 [org.gnome.desktop.background]
 picture-uri='file:///usr/share/backgrounds/bluefin/06-bluefin.xml'
@@ -45,22 +45,6 @@ unmaximize=['<Super>Down']
 [org.gnome.desktop.peripherals.keyboard]
 numlock-state=true
 
-[org.gnome.shell.extensions.dash-to-dock]
-dock-fixed=true
-force-straight-corner=false
-custom-theme-shrink=true
-disable-overview-on-startup=true
-transparency-mode='DYNAMIC'
-animation-time=0.15
-background-color='rgb(40,40,40)'
-background-opacity=0.8
-custom-background-color=true
-customize-alphas=true
-max-alpha=0.8
-min-alpha=0.5
-running-indicator-style='DOTS'
-apply-custom-theme=true
-
 [org.gnome.settings-daemon.plugins.power]
 power-button-action='interactive'
 
@@ -85,20 +69,8 @@ keybindings=''
 new-tab=false
 flatpak='off'
 
-[org.gnome.shell.extensions.search-light]
-shortcut-search=['<Super>space']
-scale-width=0.10
-scale-height=0.15
-border-thickness=1
-border-radius=1.65
-border-color=(0.23, 0.23, 0.23, 1.0)
-background-color=(0.0, 0.0, 0.0, 0.8)
-
-[org.gnome.shell.extensions.blur-my-shell.dash-to-dock]
-blur=true
-
-# Quick Settings, the calendar and the other shell popups are blurred like the
-# dock. blur-my-shell only draws the rounded corners of that blur when the
+# Quick Settings, the calendar and the other shell popups are blurred.
+# blur-my-shell only draws the rounded corners of that blur when the
 # gnome-rounded-blur library (libgnome-rounded-blur.so) is present, which the
 # base images install. See docs/skills/gnome-rounded-blur.md.
 [org.gnome.shell.extensions.blur-my-shell.popup]
@@ -124,5 +96,3 @@ restore-window-size=false
 audible-bell=false
 profile-uuids=['2871e8027773ae74d6c87a5f659bbc74']
 default-profile-uuid='2871e8027773ae74d6c87a5f659bbc74'
-
-# SearchLight extension misses gschema XML file, so it's located in dconf
