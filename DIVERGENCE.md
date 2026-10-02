@@ -66,3 +66,4 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **zram recompress `priority=1`**: write `priority=1` so recompression uses the zstd slot explicitly.
 - **zram recompress service condition**: also require `/sys/block/zram0/idle`, so it skips on kernels without idle marking.
 - **`vm.page-cluster = 0`** (own file): no swap readahead on zram.
+- **`vm.swappiness = 180`** (own file): favor swapping to zram over dropping file cache. No other swappiness setting exists in this repo or the vendored common; the base image was not checked.
