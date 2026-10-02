@@ -51,3 +51,7 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
 ## Packages and system
 
 - **Added `playerctl`** to the base package list.
+- **composefs support**: `60-bootc-composefs.conf` adds the dracut `bootc` module. `19-initramfs.sh` already runs
+  dracut after all base packages are installed and dracut reads `dracut.conf.d/` on its own, so no separate
+  dracut run was added. Not yet verified: that `bootc-root-setup.service` lands in the built initramfs (needs a
+  build; check with `lsinitrd`). Note: DX's `80-vfio.conf` is never applied because DX runs after 19 (upstream bug).
