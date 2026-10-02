@@ -38,6 +38,6 @@ name='Development'
 translate=false
 
 [org/gnome/desktop/app-folders/folders/Productivity]
-apps=['simple-scan.desktop', 'org.gnome.Papers.desktop', 'org.gnome.Connections.desktop']
+apps=['org.gnome.Papers.desktop']
 name='Productivity'
 translate=false

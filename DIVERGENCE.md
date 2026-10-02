@@ -77,3 +77,8 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   (`ublue-bling-fastfetch`) is kept.
 - **Removed starship** everywhere: binary download, bash profile.d hook, fish and zsh init, brew preinstall entry.
 - **fish prompt** replaced Bluefin's user@host/container prompt with `<full directory>> `.
+
+- **Debloated default Flatpaks**: removed Gradia, Pinta, DistroShelf, Ignition, Impression, Connections, Contacts,
+  Calendar, Maps, Weather, Simple Scan, Showtime, Snapshot and Refine. Kept core GNOME utilities and the Wrasse set
+  (Chromium, Clapper, Extension Manager, Flatseal, Mission Center, Bazaar). Video mime defaults moved from Showtime
+  to Clapper; the Productivity app folder lost Simple Scan and Connections.
