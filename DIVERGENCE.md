@@ -64,3 +64,4 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   service and timer (timer enabled in `17-cleanup.sh`), DAMON_RECLAIM tmpfiles config, and
   `vm.watermark_scale_factor = 125`. Why: start background reclaim into zram before allocations stall.
 - **zram recompress `priority=1`**: write `priority=1` so recompression uses the zstd slot explicitly.
+- **zram recompress service condition**: also require `/sys/block/zram0/idle`, so it skips on kernels without idle marking.

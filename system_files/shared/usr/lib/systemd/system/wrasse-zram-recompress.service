@@ -3,6 +3,7 @@ Description=Recompress idle zram pages with zstd
 Documentation=https://docs.kernel.org/admin-guide/blockdev/zram.html
 After=systemd-zram-setup@zram0.service
 ConditionPathExists=/sys/block/zram0/recompress
+ConditionPathExists=/sys/block/zram0/idle
 
 # The Fedora kernel lacks CONFIG_ZRAM_TRACK_ENTRY_ACTIME, so zram cannot mark
 # pages idle by age. Instead each run recompresses the pages untouched since
