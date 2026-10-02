@@ -1,0 +1,14 @@
+[Unit]
+Description=Wrasse coding agents
+
+# Everything the lazy claude stub launches runs in a scope under this slice
+# (systemd-run --user --scope --slice=wrasse-agents.slice). Rationale and the
+# numbers are in docs/AGENT-SLICE.md in the source tree. The pressure limit and
+# duration are in wrasse-agents.slice.d/20-oomd.conf, see the note there.
+[Slice]
+# Soft ceiling: above 60% of RAM the kernel throttles and reclaims this slice
+# hard, so a runaway build slows down before it starves the desktop.
+MemoryHigh=60%
+# systemd-oomd watches this slice's memory pressure and SIGKILLs the busiest
+# scope under it, instead of the desktop freezing. Needs systemd-oomd enabled.
+ManagedOOMMemoryPressure=kill

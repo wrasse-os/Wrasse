@@ -15,6 +15,8 @@ systemctl enable input-remapper.service
 systemctl enable rpm-ostree-countme.service
 systemctl enable tailscaled.service
 systemctl enable wrasse-zram-recompress.timer
+# wrasse-agents.slice (ManagedOOMMemoryPressure=kill) only has an effect with systemd-oomd running.
+systemctl enable systemd-oomd.service
 systemctl enable ublue-system-setup.service
 
 systemctl enable flatpak-preinstall.service

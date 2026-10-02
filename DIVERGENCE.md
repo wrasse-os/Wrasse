@@ -213,3 +213,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   no root needed, installs to `~/.local/bin` and `~/.local/share/claude`, then auto-updates itself), then launches. No flags
   are added to Claude Code, so permission modes are untouched. Why: Claude Code is not baked into the image, so it can
   update itself. Gating on pending decision 2 is not done; see `docs/SPEC.md`.
+
+- **`wrasse-agents.slice`** (user slice, `/usr/lib/systemd/user/`): `MemoryHigh=60%`, `ManagedOOMMemoryPressure=kill`;
+  pressure limit 50% and duration 20 s in `wrasse-agents.slice.d/20-oomd.conf` because Fedora's
+  `user/slice.d/10-oomd-per-slice-defaults.conf` (80%) overrides a value set in the slice file itself (verified with
+  `oomctl`). `systemd-oomd.service` is enabled explicitly in `17-cleanup.sh` (Fedora's preset already enables it). Why: spec
+  Phase 5, the agent should be killed before the desktop freezes. Numbers and reasoning in `docs/AGENT-SLICE.md`.
