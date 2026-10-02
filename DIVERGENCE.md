@@ -165,3 +165,5 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **CI reports the DX sysext size** (`build.yml`, step "Report DX sysext size"): reads `wrasse-dx.raw` out of the built image and writes
   its size and extension-release to the job summary for every cell. Size cannot be known without a build, so the spec's "report the
   final size" is answered by the first CI run.
+- **`docs/DX-SELINUX-CHECKLIST.md`**: bring-up and SELinux test list for the DX sysext (labels, Docker, libvirt/QEMU, VS Code, perf,
+  waydroid, reboot, update and rollback, off). Written because none of it could be run without a build.

@@ -11,7 +11,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 0 | Recon + spec | in progress |
 | 1 | Base image changes | done (except `brand:`, deferred by the user) |
 | 2 | CI + release lines | partial: implemented, 3 items blocked (see "Phase 2 status notes") |
-| 3 | DX as a sysext | todo |
+| 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
 | 4 | Terminal (Zellij, multiplexer) | todo |
 | 5 | Claude Code integration | todo |
 | 6 | `wrasse install` (Rust CLI) | todo |
@@ -40,7 +40,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 - Build: `Justfile` (`build`, `build-ghcr`, `rechunk`, `verify-container`, `fedora_version`, `image_name`, ...),
   `Containerfile` (stages `umotd-build`, `uwelcome-build`, `common-build`, `brew`, `ctx`, `base`), scripts in
   `build_files/{base,dx,shared}/` run in order from `build_files/shared/build.sh`.
-- `IMAGE_FLAVOR=dx` runs `build_files/shared/build-dx.sh` after the initramfs step. Flavors in CI: `main`, `nvidia-open`.
+- (Phase 0 fact, removed in Phase 3) `IMAGE_FLAVOR=dx` ran `build_files/shared/build-dx.sh` after the initramfs step.
 - Streams today: `stable` (weekly cron, also `stable-daily`), `beta` (runs on push), `latest` (PR and manual). Workflows:
   `.github/workflows/build-image-{stable,beta,latest-main}.yml` calling `reusable-build.yml`; `build-images.yml` runs all.
   `Justfile` hard-codes the three tags and picks the akmods flavor by matching the tag text.
@@ -141,6 +141,29 @@ No systemd-sysupdate anywhere. bootc delivers the sysext with the image, so roll
 Flag SELinux risks: Docker and libvirt must work with SELinux enforcing after merge. Write a test checklist for the user.
 File map: `build_files/dx/*`, `build_files/shared/build-dx.sh`, `system_files/dx/**` (move what is still needed into the
 sysext or shared files), `Containerfile`, new `ujust` recipe (vendored `system_files/shared/usr/share/ublue-os/just/`), CI.
+
+### Phase 3 status notes
+
+Done (written, nothing built or booted): `build_files/dx/build-sysext.sh` builds `wrasse-dx.raw` in Containerfile stage `dx-build`
+(FROM `base`); stage `final` copies it, plus a plain-text `wrasse-dx.extension-release`, to `/usr/share/wrasse/sysexts/` as the last
+layer; `test-sysext.sh` asserts the extension-release ID and VERSION_ID equal os-release; `ujust dx on|off|status` in
+`60-custom.just` with the root helper `/usr/libexec/wrasse-dx`; the old image path and `system_files/dx` are gone;
+`docs/DX-SELINUX-CHECKLIST.md` is the test list for you; CI step "Report DX sysext size" prints the size. No systemd-sysupdate anywhere.
+
+Findings and choices (verified against github.com/fedora-sysexts/fedora and the Fedora repos on 2026-10-02):
+- fedora-sysexts writes `ID="_any"` into extension-release because pinning `ID=fedora` breaks Universal Blue images (this image's ID is
+  `bluefin`, becoming `wrasse` under `brand:`). The spec asks for ID + VERSION_ID matching, so the build copies the image's real
+  `ID` and `VERSION_ID`; the brand rename needs no change here because the build reads os-release.
+- Docker comes from Fedora (`moby-engine`, `docker-compose`, `docker-buildx`), not docker-ce, so no Docker Inc repo has to track
+  branched Fedora. If you want docker-ce back, only `PACKAGES` and a repo file in `build-sysext.sh` change.
+- Not in the spec list, so dropped: Incus/LXC, ROCm, android-tools, the vfio dracut file (cannot live in a sysext). See `DIVERGENCE.md`.
+- Final size is unknown without a build. The first CI run prints it per cell in the job summary.
+- bootc chunked pulls: the sysext is the last, single layer so a DX-only change redownloads that layer. Whether the rechunk step keeps it as
+  a separate chunk was not verified; check the pushed image's layers after the first CI run.
+- Open risks needing real hardware: sysext merge on composefs root, build-time SELinux labels (`mkfs.erofs --file-contexts`),
+  `restorecon`-clean state after merge, Docker and libvirt under enforcing, waydroid kernel support (binder).
+- `ujust devmode` (brew based dev tools) and `system-dx-flatpaks.Brewfile` were not touched; they are a separate user-space path.
+- Pending decision 2 (Claude Code in every image or only after `ujust dx on`) is not decided here; Phase 5 owns it.
 
 ## Phase 4: terminal
 
