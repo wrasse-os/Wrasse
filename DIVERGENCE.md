@@ -90,3 +90,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   directory on dl.fedoraproject.org (beta). Why: the spec wants versions resolved automatically, and Bluefin's version lookup read
   a ublue base-image manifest that does not exist for branched Fedora. The config holds the per-line akmods flavor, kernel pin and
   the `nvidia` switch (one boolean per line) that decides whether a line gets an nvidia image.
+
+## Gradia extension (opt-in)
+
+- **Gradia Capture GNOME extension is installed but not enabled.** Re-added the submodule and build step; it is not in
+  the default `enabled-extensions`. `ujust gradia-extension on|off|status` toggles it per user (`60-custom.just`).
+  Why: users who do not want their GNOME Shell modified are not forced into it.

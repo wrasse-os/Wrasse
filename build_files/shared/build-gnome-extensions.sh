@@ -27,6 +27,12 @@ rm -rf /usr/share/gnome-shell/extensions/blur-my-shell@aunetx/build
 mv /usr/share/gnome-shell/extensions/tmp/caffeine/caffeine@patapon.info /usr/share/gnome-shell/extensions/caffeine@patapon.info
 glib-compile-schemas --strict /usr/share/gnome-shell/extensions/caffeine@patapon.info/schemas
 
+# Gradia Capture (installed but not enabled; opt in with `ujust gradia-extension on`)
+bash /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/build.sh
+unzip -o /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/gradia-integration@alexandervanhee.github.io.shell-extension.zip -d /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io
+rm -f /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/gradia-integration@alexandervanhee.github.io.shell-extension.zip
+glib-compile-schemas --strict /usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io/schemas
+
 rm /usr/share/glib-2.0/schemas/gschemas.compiled
 glib-compile-schemas /usr/share/glib-2.0/schemas
 

@@ -14,3 +14,7 @@
 	path = system_files/shared/usr/share/gnome-shell/extensions/tmp/caffeine
 	url = https://github.com/eonpatapon/gnome-shell-extension-caffeine.git
 	branch = v60
+[submodule "system_files/shared/usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io"]
+	path = system_files/shared/usr/share/gnome-shell/extensions/gradia-integration@alexandervanhee.github.io
+	url = https://github.com/AlexanderVanhee/gradia-capture.git
+	branch = master
