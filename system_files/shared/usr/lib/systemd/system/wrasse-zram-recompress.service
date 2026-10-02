@@ -1,0 +1,16 @@
+[Unit]
+Description=Recompress idle zram pages with zstd
+Documentation=https://docs.kernel.org/admin-guide/blockdev/zram.html
+After=systemd-zram-setup@zram0.service
+ConditionPathExists=/sys/block/zram0/recompress
+
+# The Fedora kernel lacks CONFIG_ZRAM_TRACK_ENTRY_ACTIME, so zram cannot mark
+# pages idle by age. Instead each run recompresses the pages untouched since
+# the previous run, then marks everything idle again. threshold=1024 skips
+# pages lz4 already packed below 1 KiB, where zstd gains too little.
+[Service]
+Type=oneshot
+ExecStart=-/bin/sh -c 'echo "type=idle threshold=1024" > /sys/block/zram0/recompress'
+ExecStart=/bin/sh -c 'echo all > /sys/block/zram0/idle'
+Nice=19
+CPUSchedulingPolicy=idle

@@ -1,0 +1,9 @@
+[Unit]
+Description=Recompress idle zram pages every 30 minutes
+
+[Timer]
+OnBootSec=30min
+OnUnitActiveSec=30min
+
+[Install]
+WantedBy=timers.target

@@ -55,3 +55,11 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
   dracut after all base packages are installed and dracut reads `dracut.conf.d/` on its own, so no separate
   dracut run was added. Not yet verified: that `bootc-root-setup.service` lands in the built initramfs (needs a
   build; check with `lsinitrd`). Note: DX's `80-vfio.conf` is never applied because DX runs after 19 (upstream bug).
+
+## Memory stack
+
+Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with a `wrasse` prefix.
+
+- **Base**: zram-generator drop-in (lz4 primary, `zstd(level=3)` recompression), `wrasse-zram-recompress`
+  service and timer (timer enabled in `17-cleanup.sh`), DAMON_RECLAIM tmpfiles config, and
+  `vm.watermark_scale_factor = 125`. Why: start background reclaim into zram before allocations stall.

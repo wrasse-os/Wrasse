@@ -14,6 +14,7 @@ systemctl enable flatpak-nuke-fedora.service
 systemctl enable input-remapper.service
 systemctl enable rpm-ostree-countme.service
 systemctl enable tailscaled.service
+systemctl enable wrasse-zram-recompress.timer
 systemctl enable ublue-system-setup.service
 
 systemctl enable flatpak-preinstall.service
