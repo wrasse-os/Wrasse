@@ -191,3 +191,6 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **Flatpak-vs-brew policy has no default.** If a name exists in both, `wrasse install` stops with a
   `policy_required` error unless `--prefer flatpak|brew|ask`, `prefer = ...` in `~/.config/wrasse/config.toml`, or
   `--kind gui|cli` settles it. Why: pending decision 1 is the user's; see `docs/SPEC.md`.
+- **Containerfile builds the `wrasse` CLI** (`wrasse-build` stage, `rust:alpine` pinned by digest, `cargo build
+  --release --locked`, musl so the binary is static) and copies it to `/usr/bin/wrasse` through `common-build`'s
+  `/out/shared`, like umotd. Why: ship the CLI in the image. Nothing was built locally.

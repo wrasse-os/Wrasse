@@ -20,6 +20,13 @@ RUN apk add git && \
 WORKDIR /src
 RUN go build -ldflags="-s -w" -o /uwelcome .
 
+FROM docker.io/library/rust:alpine@sha256:a96ea6d18d4062e38f16cfbadd8b4541d622f2527dd0a5eca1fb36d301da4e88 AS wrasse-build
+WORKDIR /src
+COPY cli/Cargo.toml cli/Cargo.lock ./
+COPY cli/src ./src
+RUN cargo build --release --locked && \
+    install -D target/release/wrasse /wrasse
+
 FROM docker.io/library/alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS common-build
 
 COPY --from=ghcr.io/ublue-os/bluefin-wallpapers-gnome:latest@sha256:470572484d5b7b8f5ce422f8a7af4fbdbe66f6a7075a5ae425ce0658f3e3738c / /out/bluefin/usr/share
@@ -128,6 +135,7 @@ RUN install -d /tmp/gdu-rules /out/shared/usr/lib/udev/rules.d && \
 
 COPY --from=umotd-build /umotd /out/shared/usr/bin/umotd
 COPY --from=uwelcome-build /uwelcome /out/shared/usr/bin/uwelcome
+COPY --from=wrasse-build /wrasse /out/shared/usr/bin/wrasse
 
 # Ujust gate: the tailored completions checked into system_files/shared must bind `ujust`
 # & /out/shared must not ship files at the same paths to avoid shadow by ctx overlay.

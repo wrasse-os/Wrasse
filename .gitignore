@@ -15,3 +15,6 @@ devcontainer
 __pycache__/
 *.py[cod]
 *$py.class
+
+# wrasse CLI build output
+cli/target/
