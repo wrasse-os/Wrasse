@@ -1,36 +1,86 @@
-name: Reusable Build and Push
+name: Build Images
+# One workflow, one branch (main). Every release line x GPU flavor is an independent
+# matrix cell that publishes its own tag; a failing cell never blocks the others.
+#
+# Lines and flavors come from .github/build-matrix.json (set a line's "nvidia" to
+# false to drop its nvidia image). Fedora versions are resolved per run by
+# .github/scripts/resolve-lines.sh. Secrets needed for signing: docs/CI-SECRETS.md.
 on:
-  workflow_call:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/*validate*.yml"
+      - "system_files/shared/etc/bazaar/**"
+      - "flatpaks/**"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/*validate*.yml"
+      - "system_files/shared/etc/bazaar/**"
+      - "flatpaks/**"
+  merge_group:
+  schedule:
+    - cron: "0 1 * * TUE" # Every Tuesday at 1:00 AM UTC
+  workflow_dispatch:
     inputs:
-      image_flavors:
-        description: "JSON string of flavors to build, '[main, nvidia]'"
-        default: "['main', 'nvidia-open']"
-        type: string
-      brand_name:
-        description: "The Brand Name: bluefin"
-        required: true
-        default: bluefin
-        type: string
-      stream_name:
-        description: "The Fedora Version: stable, latest, or beta"
-        required: true
-        type: string
-      kernel_pin:
-        description: "The full kernel version to pin"
-        type: string
+      only_line:
+        description: "Build a single release line (default: all)"
+        type: choice
+        default: all
+        options:
+          - all
+          - reimagined
+          - next
+          - stable
 
 env:
+  IMAGE_BASE: wrasse
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
 jobs:
-  build_container:
-    name: image
+  plan:
+    name: Resolve release lines
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Resolve Fedora versions and build matrix
+        id: matrix
+        env:
+          ONLY_LINE: ${{ inputs.only_line }}
+        run: |
+          set -euo pipefail
+          .github/scripts/resolve-lines.sh versions >&2
+          matrix="$(.github/scripts/resolve-lines.sh matrix)"
+          if [[ -n "${ONLY_LINE:-}" && "${ONLY_LINE}" != "all" ]]; then
+            matrix="$(jq -c --arg l "${ONLY_LINE}" '.include |= map(select(.line == $l))' <<<"${matrix}")"
+          fi
+          if [[ "$(jq '.include | length' <<<"${matrix}")" -eq 0 ]]; then
+            echo "::error::Build matrix is empty"
+            exit 1
+          fi
+          echo "Matrix:"
+          jq -r '.include[] | " - \(.line)/\(.flavor): Fedora \(.fedora_version) (prerelease=\(.prerelease))"' <<<"${matrix}"
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.line }} ${{ matrix.flavor }} (F${{ matrix.fedora_version }})
+    needs: [plan]
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -38,13 +88,17 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
-    continue-on-error: false
     strategy:
+      # Cells are independent: one failing never cancels or blocks another.
       fail-fast: false
-      matrix:
-        image_flavor: ${{ fromJson(inputs.image_flavors) }}
-        base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
-        stream_name: ["${{ inputs.stream_name }}"]
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    env:
+      # Consumed by the Justfile; the Fedora version for this line was resolved once in `plan`.
+      FEDORA_VERSION: ${{ matrix.fedora_version }}
+      FEDORA_PRERELEASE: ${{ matrix.prerelease }}
+      LINE: ${{ matrix.line }}
+      FLAVOR: ${{ matrix.flavor }}
+      KERNEL_PIN: ${{ matrix.kernel_pin }}
 
     steps:
       - name: Checkout
@@ -68,15 +122,13 @@ jobs:
       - name: Image Name
         shell: bash
         run: |
-          IMAGE_NAME="$(just image_name ${{ matrix.base_name }} ${{ matrix.stream_name }} ${{ matrix.image_flavor }})"
+          IMAGE_NAME="$(just image_name "${IMAGE_BASE}" "${LINE}" "${FLAVOR}")"
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Default Tag
         shell: bash
         run: |
-          DEFAULT_TAG="$(just generate-default-tag \
-                       ${{ matrix.stream_name }} \
-                       "1")"
+          DEFAULT_TAG="$(just generate-default-tag "${LINE}" "1")"
           echo "Default Tag: ${DEFAULT_TAG}"
           echo "DEFAULT_TAG=${DEFAULT_TAG}" >> $GITHUB_ENV
 
@@ -84,12 +136,10 @@ jobs:
         shell: bash
         id: setup-cache
         env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
-          CACHE="$(just setup-cache "${MATRIX_BASE_NAME}" \
-                            "${MATRIX_STREAM_NAME}" \
+          CACHE="$(just setup-cache "${IMAGE_BASE}" \
+                            "${LINE}" \
                             "1" \
                             "${GITHUB_EVENT_NAME}")"
 
@@ -107,6 +157,9 @@ jobs:
           path: /var/tmp/buildah-cache-*
           key: ${{ runner.os }}-${{ runner.arch }}-buildah-${{ env.CACHE_NAME }}
 
+      # Fails closed: `just build` exits non-zero when the base or akmods image for this
+      # Fedora version/kernel is missing or cosign verification fails. Every later step
+      # (including every push) is skipped, so this cell's tag keeps the last good image.
       - name: Build Image
         id: build-image
         shell: bash
@@ -114,10 +167,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo -E $(command -v just) repo_organization="${{ github.repository_owner }}" \
-                    build-ghcr "${{ matrix.base_name }}" \
-                               "${{ matrix.stream_name }}" \
-                               "${{ matrix.image_flavor }}" \
-                               "${{ inputs.kernel_pin }}"
+                    build-ghcr "${IMAGE_BASE}" \
+                               "${LINE}" \
+                               "${FLAVOR}" \
+                               "${KERNEL_PIN}"
 
       # https://github.com/actions/cache/issues/1533
       - name: Hack around permission issue caching
@@ -146,14 +199,11 @@ jobs:
         if: github.event_name != 'pull_request'
         id: generate-sbom
         env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
           SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
         run: |
-          sudo -E $(command -v just) gen-sbom "${MATRIX_BASE_NAME}" \
-                            "${MATRIX_STREAM_NAME}" \
-                            "${MATRIX_IMAGE_FLAVOR}" \
+          sudo -E $(command -v just) gen-sbom "${IMAGE_BASE}" \
+                            "${LINE}" \
+                            "${FLAVOR}" \
                             "${SYFT_CMD}"
 
       - name: Rechunk Image
@@ -162,38 +212,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sudo -E $(command -v just) rechunk "${{ matrix.base_name }}" \
-                            "${{ matrix.stream_name }}" \
-                            "${{ matrix.image_flavor }}" \
+          sudo -E $(command -v just) repo_organization="${{ github.repository_owner }}" \
+                            rechunk "${IMAGE_BASE}" \
+                            "${LINE}" \
+                            "${FLAVOR}" \
                             "1"
 
       - name: Load Image into Podman
         id: load-rechunk
         shell: bash
         run: |
-          sudo -E $(command -v just) load-rechunk "${{ matrix.base_name }}" \
-                            "${{ env.DEFAULT_TAG }}" \
-                            "${{ matrix.image_flavor }}"
+          sudo -E $(command -v just) load-rechunk "${IMAGE_BASE}" \
+                            "${LINE}" \
+                            "${FLAVOR}"
 
       - name: Secureboot Check
         id: secureboot
         shell: bash
         run: |
-          sudo -E $(command -v just) secureboot "${{ matrix.base_name }}" \
-                          "${{ env.DEFAULT_TAG }}" \
-                          "${{ matrix.image_flavor }}"
+          sudo -E $(command -v just) secureboot "${IMAGE_BASE}" \
+                          "${LINE}" \
+                          "${FLAVOR}"
 
       - name: Generate tags
         id: generate-tags
         shell: bash
         run: |
           alias_tags="$(just generate-build-tags \
-                     "${{ matrix.base_name }}" \
-                     "${{ matrix.stream_name }}" \
-                     "${{ matrix.image_flavor }}" \
-                     "${{ inputs.kernel_pin }}" \
+                     "${IMAGE_BASE}" \
+                     "${LINE}" \
+                     "${FLAVOR}" \
+                     "${KERNEL_PIN}" \
                      "1" \
-                     "$(podman inspect ${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }} | jq -r '.[].Config.Labels["org.opencontainers.image.version"]')" \
+                     "$(podman inspect ${IMAGE_NAME}:${DEFAULT_TAG} | jq -r '.[].Config.Labels["org.opencontainers.image.version"]')" \
                      "${{ github.event_name }}" \
                      "${{ github.event.number }}")"
 
@@ -206,8 +257,8 @@ jobs:
         shell: bash
         run: |
           set -eoux pipefail
-          sudo -E $(command -v just) tag-images "${{ env.IMAGE_NAME }}" \
-                          "${{ env.DEFAULT_TAG }}" \
+          sudo -E $(command -v just) tag-images "${IMAGE_NAME}" \
+                          "${DEFAULT_TAG}" \
                           "${{ steps.generate-tags.outputs.alias_tags }}"
 
       # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
@@ -259,6 +310,7 @@ jobs:
           TAGS: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
       - name: Install ORAS
         if: github.event_name != 'pull_request'
@@ -275,7 +327,6 @@ jobs:
         env:
           IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           DIGEST: ${{ steps.push.outputs.digest }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
           SBOM="sbom_out/${IMAGE_NAME}/sbom.json"
 
@@ -295,8 +346,8 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
           SBOM_DIGEST: ${{ steps.upload-sbom.outputs.sbom_digest }}
         run: |
           cosign sign -y --key env://COSIGN_PRIVATE_KEY ${LOWERCASE}/${IMAGE_NAME}@${SBOM_DIGEST}
@@ -310,22 +361,36 @@ jobs:
           push-to-registry: true
 
   check:
-    name: Check all ${{ matrix.stream_name }} builds successful
+    name: Summary
     if: always()
     runs-on: ubuntu-latest
-    needs: [build_container]
+    needs: [plan, build]
     steps:
-      - name: Check Jobs
+      - name: Report cells
         env:
           JOBS: ${{ toJson(needs) }}
         run: |
           echo "Job status:"
-          echo $JOBS | jq -r 'to_entries[] | " - \(.key): \(.value.result)"'
+          echo "$JOBS" | jq -r 'to_entries[] | " - \(.key): \(.value.result)"'
 
-          for i in $(echo $JOBS | jq -r 'to_entries[] | .value.result'); do
+          # A failed or skipped cell is already fail-closed (nothing was pushed for it), so
+          # this job only makes the run red; it never re-runs or cancels the other cells.
+          for i in $(echo "$JOBS" | jq -r 'to_entries[] | .value.result'); do
             if [ "$i" != "success" ] && [ "$i" != "skipped" ]; then
               echo ""
-              echo "Status check not okay!"
+              echo "At least one release line failed. Failed cells pushed nothing."
               exit 1
             fi
           done
+
+  generate-release:
+    name: Generate Release
+    needs: [build]
+    # Changelog and GitHub release for the stable line only; skipped on pull requests.
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+    permissions:
+      contents: write
+    secrets: inherit
+    uses: ./.github/workflows/generate-release.yml
+    with:
+      stream_name: '["stable"]'

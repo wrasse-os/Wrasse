@@ -60,13 +60,6 @@
       "automerge": false
     },
     {
-      "automerge": true,
-      "matchUpdateTypes": ["digest"],
-      "matchDepNames": [
-        "ghcr.io/ublue-os/silverblue-main"
-      ]
-    },
-    {
       "matchDepTypes": ["gnome-extension"],
       "matchPackageNames": ["micheleg/dash-to-dock"],
       "versioning": "regex:^extensions\\.gnome\\.org-v(?<major>\\d+)$"

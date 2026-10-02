@@ -114,3 +114,12 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
 - **`FEDORA_PRERELEASE` build arg** replaces the `UBLUE_IMAGE_TAG == beta` checks in `03-install-kernel-akmods.sh` and
   `validate-repos.sh`: updates-testing and the rpmfusion/mesa workarounds apply when the Fedora version is not final yet.
 - **`just build` tolerates a repository with no tags** (`skopeo list-tags` failing on first push).
+- **Workflows**: `build-images.yml`, `build-image-{stable,beta,latest-main}.yml` and `reusable-build.yml` are replaced by one
+  `build.yml`. A `plan` job runs `resolve-lines.sh matrix`; a `build` matrix (line x flavor, `fail-fast: false`) builds, rechunks,
+  pushes, signs and attests each cell independently. A failed cell pushes nothing (its tag keeps the last good image) and a final
+  `Summary` job only turns the run red. Triggers: push and pull request on `main`, weekly cron (Tuesday), manual dispatch with an
+  optional single-line filter. The release/changelog job runs for `stable` only. Removed: the `-dx` matrix axis, the `beta` branch
+  trigger, the `stable-daily` cadence. `COSIGN_PASSWORD` is passed to cosign alongside `SIGNING_SECRET` (see `docs/CI-SECRETS.md`).
+- **`clean.yml`** only lists `wrasse` and `wrasse-nvidia`. **`changelogs.py`**: registry `ghcr.io/wrasse-os/`, images `wrasse` and
+  `wrasse-nvidia`, no dx section or dx packages, no `stable-daily` special case. **Renovate**: dropped the `silverblue-main` digest
+  rule (that image is resolved at build time now).

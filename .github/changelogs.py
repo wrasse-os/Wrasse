@@ -8,17 +8,12 @@ from typing import Any
 import re
 from collections import defaultdict
 
-REGISTRY = "ghcr.io/ublue-os/"
+REGISTRY = "ghcr.io/wrasse-os/"
 
-IMAGE_MATRIX_LATEST = {
-    "experience": ["base", "dx"],
-    "de": ["gnome"],
-    "image_flavor": ["main", "nvidia-open"],
-}
+# Every release line (reimagined, next, stable) ships the same two images.
 IMAGE_MATRIX = {
-    "experience": ["base", "dx"],
     "de": ["gnome"],
-    "image_flavor": ["main", "nvidia-open"],
+    "image_flavor": ["default", "nvidia"],
 }
 
 RETRIES = 3
@@ -34,10 +29,8 @@ PATTERN_PKGREL_CHANGED = "{prev} ➡️ {new}"
 PATTERN_PKGREL = "{version}"
 COMMON_PAT = "### All Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n"
 OTHER_NAMES = {
-    "base": "### Base Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
-    "dx": "### [Dev Experience Images](https://docs.projectbluefin.io/bluefin-dx)\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
     "gnome": "### [Bluefin Images](https://projectbluefin.io/)\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
-    "nvidia-open": "### Nvidia Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
+    "nvidia": "### Nvidia Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
 }
 
 COMMITS_FORMAT = "### Commits\n| Hash | Subject | Author |\n| --- | --- | --- |{commits}\n\n"
@@ -58,12 +51,6 @@ From previous `{target}` version `{prev}` there have been the following changes.
 | **Podman** | {pkgrel:podman} |
 | **Nvidia** | {pkgrel:nvidia-driver} |
 
-### Major DX packages
-| Name | Version |
-| --- | --- |
-| **Incus** | {pkgrel:incus} |
-| **Docker** | {pkgrel:docker-ce} |
-
 {changes}
 
 ### How to rebase
@@ -73,10 +60,10 @@ For current users, type the following to rebase to this version:
 IMAGE_NAME=$(jq -r '.["image-name"]' < /usr/share/ublue-os/image-info.json)
 
 # For this Stream
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/ublue-os/$IMAGE_NAME:{target}
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/wrasse-os/$IMAGE_NAME:{target}
 
 # For this Specific Image:
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/ublue-os/$IMAGE_NAME:{curr}
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/wrasse-os/$IMAGE_NAME:{curr}
 ```
 
 ### Documentation
@@ -91,38 +78,27 @@ BLACKLIST_VERSIONS = [
     "gnome-shell",
     "mesa-filesystem",
     "podman",
-    "docker-ce",
-    "incus",
-    "devpod",
     "nvidia-driver"
 ]
 
 
 def get_images(target: str):
-    if "latest" in target:
-        matrix = IMAGE_MATRIX_LATEST
-    else:
-        matrix = IMAGE_MATRIX
-
-    for experience, de, image_flavor in product(*matrix.values()):
+    for de, image_flavor in product(*IMAGE_MATRIX.values()):
         img = ""
         if de == "gnome":
-            img += "bluefin"
+            img += "wrasse"
 
-        if experience == "dx":
-            img += "-dx"
-
-        if image_flavor != "main":
+        if image_flavor != "default":
             img += "-"
             img += image_flavor
 
-        yield img, experience, de, image_flavor
+        yield img, de, image_flavor
 
 
 def get_manifests(target: str):
     out = {}
     imgs = list(get_images(target))
-    for j, (img, _, _, _) in enumerate(imgs):
+    for j, (img, _, _) in enumerate(imgs):
         output = None
         print(f"Getting {img}:{target} manifest ({j+1}/{len(imgs)}).")
         for i in range(RETRIES):
@@ -240,9 +216,9 @@ def parse_sbom_packages(sbom: dict) -> dict[str, str]:
     return packages
 
 
-def get_packages(target: str, images: list[tuple[str, str, str, str]]):
+def get_packages(target: str, images: list[tuple[str, str, str]]):
     packages = {}
-    for j, (img, _, _, _) in enumerate(images):
+    for j, (img, _, _) in enumerate(images):
         print(f"Getting packages for {img}:{target} via SBOM ({j+1}/{len(images)})")
         try:
             full_image = f"{REGISTRY}{img}"
@@ -274,7 +250,7 @@ def get_package_groups(target: str, prev_tag: str, curr_tag: str):
 
     # Find common packages
     first = True
-    for img, experience, de, image_flavor in get_images(target):
+    for img, de, image_flavor in get_images(target):
         if img not in pkg:
             continue
 
@@ -291,17 +267,13 @@ def get_package_groups(target: str, prev_tag: str, curr_tag: str):
     # Find other packages
     for t, other in others.items():
         first = True
-        for img, experience, de, image_flavor in get_images(target):
+        for img, de, image_flavor in get_images(target):
             if img not in pkg:
                 continue
 
-            if t == "nvidia-open" and "nvidia-open" not in image_flavor:
+            if t == "nvidia" and "nvidia" not in image_flavor:
                 continue
             if t == "gnome" and de != "gnome":
-                continue
-            if t == "base" and experience != "base":
-                continue
-            if t == "dx" and experience != "dx":
                 continue
 
             if first:
@@ -455,8 +427,6 @@ def generate_changelog(
         curr_pretty = re.sub(r"\.\d{1,2}$", "", curr)
         # Remove target- from curr
         curr_pretty = re.sub(rf"^[a-z]+-|^[0-9]+-", "", curr_pretty)
-        if target == "stable-daily":
-            curr_pretty = re.sub(rf"^[a-z]+-", "", curr_pretty)
         if not fedora_version + "." in curr_pretty:
             curr_pretty=fedora_version + "." + curr_pretty
         pretty = target.capitalize()
