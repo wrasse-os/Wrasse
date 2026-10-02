@@ -238,3 +238,16 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   `--override`, `$WRASSE_GPU`, `wrasse.gpu=nvidia|default|auto` on the kernel command line, `/etc/wrasse/installer-gpu`; an invalid
   value is reported and skipped. Why: the installer's own detection (`Systeminfo.has_nvidia_gpu`) is vendor-only (any NVIDIA, Pascal
   included, which the open driver cannot drive) and has no override. 15 tests, no hardware needed.
+
+- **Installer catalog and live-ISO variant (`installer/gen-catalog.sh`, `installer/iso/variant/wrasse/`, `installer/tests/`).**
+  `gen-catalog.sh` builds the bootc-installer image catalog (`/etc/bootc-installer/images.json`) from `.github/build-matrix.json`:
+  a Wrasse group with two GPU groups (`wrasse`, `wrasse-nvidia`), each listing Reimagined / Next / Stable as
+  `ghcr.io/wrasse-os/<image>:<line>`; a line with `"nvidia": false` loses its NVIDIA leaf, so the pending nvidia decision stays a
+  one-line change. At live boot `wrasse-installer-config.service` runs `wrasse-gpu-detect` and fills `default_image`
+  (`:stable` of the detected flavor), which makes the installer open with that GPU group expanded and a leaf ticked; picking the
+  other group is the override (so is `wrasse.gpu=` on the kernel command line). Why this shape: in the installer, the image step is
+  where the release line is asked, and it is removed whenever live-ISO mode is on (`/etc/bootc-installer/live-iso-mode`, or a
+  `local_imgref`); so the Wrasse ISO is a network install, with no flag file, no embedded payload and a recipe that keeps the `image`
+  step. `configure-live.d.sh` is the hook dakota-iso's `configure-live.sh` runs last; it installs the above, deletes the flag and
+  `local_imgref` recipe that script writes, and renames Dakota's launchers. `installer/tests/test-catalog.sh` covers the generator
+  and renderer (jq only).

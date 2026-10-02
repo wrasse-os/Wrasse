@@ -1,0 +1,18 @@
+{
+  "log_file": "/var/log/bootc-installer.log",
+  "distro_name": "Wrasse",
+  "distro_logo": "org.bootcinstaller.Installer",
+  "welcome_title": "Welcome to Wrasse",
+  "welcome_subtitle": "An agent-first GNOME workstation on Fedora bootc.",
+  "hostname": "wrasse",
+  "selinuxDisabled": false,
+  "unifiedStorage": true,
+  "steps": {
+    "welcome": { "template": "welcome", "protected": true },
+    "image": { "template": "image" },
+    "disk": { "template": "disk" },
+    "slurp": { "template": "slurp" },
+    "encryption": { "template": "encryption" },
+    "user": { "template": "user" }
+  }
+}

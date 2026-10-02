@@ -1,0 +1,11 @@
+[Unit]
+Description=Preselect the Wrasse image in the live installer from the detected GPU
+Before=display-manager.service
+ConditionPathExists=/run/initramfs/live
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/wrasse-installer-config
+
+[Install]
+WantedBy=multi-user.target
