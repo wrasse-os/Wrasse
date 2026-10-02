@@ -179,3 +179,15 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   the vendored dconf palette file, because Ptyxis generates its own UUID at first launch (this machine's is not
   `2871e802...`). `none` uses `gsettings reset`, so it returns to the schema default rather than writing a value. Zellij is
   launched by absolute brew path since a GUI-launched Ptyxis may not have brew on PATH.
+
+## Phase 6: wrasse install
+
+- **`cli/`: the `wrasse` Rust CLI** (own crate, no workspace; deps clap, serde, serde_json, toml). A router over
+  Flatpak (`--user`, flathub), brew (formulae only), distrobox (`--from <distro>`, container `wrasse-<distro>`)
+  and `ujust dx on|off` (`--dx`). `install`, `remove`, `list`, `search`, `sync`, `--json` and `--dry-run` on all.
+  Every install/remove is recorded in `~/.config/wrasse/packages.toml`; `sync` replays it. Backends are plain
+  functions over one `Runner` (real, dry-run or fake) so tests never touch the real tools. Why: spec Phase 6;
+  wrasse never reimplements a package manager.
+- **Flatpak-vs-brew policy has no default.** If a name exists in both, `wrasse install` stops with a
+  `policy_required` error unless `--prefer flatpak|brew|ask`, `prefer = ...` in `~/.config/wrasse/config.toml`, or
+  `--kind gui|cli` settles it. Why: pending decision 1 is the user's; see `docs/SPEC.md`.

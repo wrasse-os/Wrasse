@@ -1,0 +1,27 @@
+[package]
+name = "wrasse"
+version = "0.1.0"
+edition = "2021"
+description = "wrasse install: a router over Flatpak, Homebrew, distrobox and the DX toggle"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "wrasse"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Not part of any workspace on purpose: this crate builds on its own in the Containerfile.
+[workspace]
