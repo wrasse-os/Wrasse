@@ -219,3 +219,9 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   `user/slice.d/10-oomd-per-slice-defaults.conf` (80%) overrides a value set in the slice file itself (verified with
   `oomctl`). `systemd-oomd.service` is enabled explicitly in `17-cleanup.sh` (Fedora's preset already enables it). Why: spec
   Phase 5, the agent should be killed before the desktop freezes. Numbers and reasoning in `docs/AGENT-SLICE.md`.
+
+- **PATH so `~/.local/bin` wins over `/usr/bin`** (so the real Claude Code beats the stub): `/etc/profile.d/wrasse-path.sh`
+  (bash/sh; prepends unless `~/.local/bin` is already ahead of `/usr/bin`) and `fish/vendor_conf.d/wrasse-path.fish`
+  (`fish_add_path --move --prepend --path`). Verified in a clean environment: fish 4.6 adds nothing on its own, bash only gets it
+  from `/etc/skel/.bashrc` (new users only). The stub still finds the real binary by absolute path, so this is belt and braces
+  and also keeps `claude doctor`'s PATH check quiet. zsh not touched.
