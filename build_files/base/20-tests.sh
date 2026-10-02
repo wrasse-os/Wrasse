@@ -78,8 +78,21 @@ if [[ "${IMAGE_NAME}" =~ nvidia ]]; then
   done
 fi
 
+# Claude Code integration: the lazy stub, the agent memory slice, the skill and the PATH snippets.
+test -x /usr/bin/claude
+test -f /usr/lib/systemd/user/wrasse-agents.slice
+test -f /usr/lib/systemd/user/wrasse-agents.slice.d/20-oomd.conf
+test -f /usr/share/wrasse/skills/wrasse/SKILL.md
+test -x /usr/share/ublue-os/user-setup.hooks.d/30-wrasse-agent-skill.sh
+test -f /etc/profile.d/wrasse-path.sh
+test -f /usr/share/fish/vendor_conf.d/wrasse-path.fish
+# The stub launches inside the agent slice.
+grep -q "wrasse-agents.slice" /usr/bin/claude
+systemd-analyze --user verify /usr/lib/systemd/user/wrasse-agents.slice
+
 IMPORTANT_UNITS=(
     rpm-ostree-countme.timer
+    systemd-oomd.service
     tailscaled.service
     ublue-system-setup.service
     uupd.timer

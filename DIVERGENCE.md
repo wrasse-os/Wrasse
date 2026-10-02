@@ -225,3 +225,6 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   (`fish_add_path --move --prepend --path`). Verified in a clean environment: fish 4.6 adds nothing on its own, bash only gets it
   from `/etc/skel/.bashrc` (new users only). The stub still finds the real binary by absolute path, so this is belt and braces
   and also keeps `claude doctor`'s PATH check quiet. zsh not touched.
+
+- **Build checks for the Claude Code integration** in `20-tests.sh`: files exist, `systemd-analyze --user verify` of the
+  slice, `systemd-oomd.service` in the enabled-units list. Why: a missing stub or a disabled oomd would silently break Phase 5.
