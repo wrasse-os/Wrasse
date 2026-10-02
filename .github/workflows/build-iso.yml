@@ -1,0 +1,145 @@
+name: Build Live ISO
+# Manual only (workflow_dispatch): nothing here runs on push, PR or a schedule.
+#
+# Builds a Wrasse live ISO with projectbluefin/dakota-iso's tooling (live container, squashfs, ISO assembly),
+# pinned by commit, plus the pinned bootc-installer release. Pins: installer/iso/pin.env.
+# What is adapted and why: installer/README.md and the "Phase 7" section of DIVERGENCE.md.
+#
+# This is a network install ISO: it embeds no OCI payload. The installer asks the GPU flavor and release
+# line, then pulls ghcr.io/wrasse-os/<image>:<line>. The live environment boots from wrasse-nvidia at the
+# tag chosen below (like Dakota's ISO, so every GPU can boot it).
+on:
+  workflow_dispatch:
+    inputs:
+      live_tag:
+        description: "Tag of ghcr.io/wrasse-os/wrasse-nvidia the live environment is built from"
+        type: choice
+        default: stable
+        options:
+          - stable
+          - next
+          - reimagined
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  build-iso:
+    name: Build Wrasse live ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    env:
+      LIVE_TAG: ${{ inputs.live_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Read pins
+        id: pins
+        run: |
+          set -euo pipefail
+          # shellcheck source=installer/iso/pin.env
+          source installer/iso/pin.env
+          {
+            echo "tooling_repo=${ISO_TOOLING_REPO}"
+            echo "tooling_ref=${ISO_TOOLING_REF}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout ISO tooling (pinned)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ${{ steps.pins.outputs.tooling_repo }}
+          ref: ${{ steps.pins.outputs.tooling_ref }}
+          path: iso-tooling
+
+      - name: Free disk space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # v10
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y podman buildah skopeo jq musl-tools \
+            mtools xorriso squashfs-tools dosfstools isomd5sum shellcheck
+
+      - name: Test the installer files
+        run: |
+          set -euo pipefail
+          shellcheck -x installer/gen-catalog.sh installer/gen-nvidia-ids.sh installer/iso/pin-installer.sh \
+            installer/iso/variant/wrasse/configure-live.d.sh installer/iso/variant/wrasse/wrasse-installer-config \
+            installer/tests/test-catalog.sh
+          installer/tests/test-catalog.sh
+          (cd installer/gpu-detect && cargo test --locked)
+
+      - name: Build wrasse-gpu-detect (static)
+        run: |
+          set -euo pipefail
+          rustup target add x86_64-unknown-linux-musl
+          (cd installer/gpu-detect && cargo build --release --locked --target x86_64-unknown-linux-musl)
+
+      - name: Add the Wrasse variant to the ISO tooling
+        run: |
+          set -euo pipefail
+          variant=iso-tooling/live/src/wrasse
+          test ! -e "${variant}"
+          cp -r installer/iso/variant/wrasse "${variant}"
+          install -m755 installer/gpu-detect/target/x86_64-unknown-linux-musl/release/wrasse-gpu-detect "${variant}/wrasse-gpu-detect"
+          installer/gen-catalog.sh > "${variant}/images.json.tmpl"
+          # Follow the pinned bootc-installer release instead of releases/latest, and verify its sha256.
+          installer/iso/pin-installer.sh iso-tooling/live/src/install-flatpaks.sh
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build live container
+        working-directory: iso-tooling
+        run: |
+          sudo podman build \
+            --cap-add sys_admin --security-opt label=disable \
+            --layers \
+            --build-arg TARGET=wrasse-nvidia \
+            --build-arg TAG="${LIVE_TAG}" \
+            --build-arg REGISTRY=wrasse-os \
+            --build-arg INSTALLER_CHANNEL=stable \
+            -t localhost/wrasse-live:latest \
+            ./live
+
+      - name: Build live squashfs and boot tar
+        working-directory: iso-tooling
+        env:
+          SUPERISO_COMPRESSION: release
+          SUPERISO_TMPDIR: /var/iso-build
+        run: |
+          sudo mkdir -p /var/iso-build
+          # No --oci-image: no payload is embedded (network install).
+          sudo -E bash scripts/build-live-squashfs.sh \
+            localhost/wrasse-live:latest \
+            /var/iso-build/wrasse.rootfs.sfs \
+            /var/iso-build/wrasse-boot.tar
+
+      - name: Assemble ISO
+        working-directory: iso-tooling
+        run: |
+          set -euo pipefail
+          sudo bash live/src/build-iso.sh --title "Wrasse Live" \
+            /var/iso-build/wrasse-boot.tar \
+            /var/iso-build/wrasse.rootfs.sfs \
+            /var/iso-build/wrasse-live.iso
+          mkdir -p "${GITHUB_WORKSPACE}/output"
+          sudo cp /var/iso-build/wrasse-live.iso "${GITHUB_WORKSPACE}/output/"
+          sudo chown -R "$USER:$(id -gn)" "${GITHUB_WORKSPACE}/output"
+          (cd "${GITHUB_WORKSPACE}/output" && sha256sum wrasse-live.iso | tee wrasse-live.iso.sha256)
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: wrasse-live-iso
+          path: output/
+          retention-days: 7

@@ -251,3 +251,14 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   step. `configure-live.d.sh` is the hook dakota-iso's `configure-live.sh` runs last; it installs the above, deletes the flag and
   `local_imgref` recipe that script writes, and renames Dakota's launchers. `installer/tests/test-catalog.sh` covers the generator
   and renderer (jq only).
+
+- **`.github/workflows/build-iso.yml` (manual `workflow_dispatch` only, never on push or a schedule).** Adapts
+  `projectbluefin/dakota-iso`, the ISO tooling Bluefin's installer ISOs use today (it replaced `ublue-os/titanoboa` as what
+  Bluefin builds with; titanoboa's last push is 2026-06-18 and its contract is a GRUB `iso.yaml` in the image, with no installer).
+  Pinned: dakota-iso commit `9c123eea` and bootc-installer `tuna-os/bootc-installer` `v2026.09.26-253d6938` with its bundle sha256
+  (`installer/iso/pin.env`). Adaptations: the tooling is checked out beside the repo and a `wrasse` variant is dropped into its
+  `live/src/`; `install-flatpaks.sh` is patched by `installer/iso/pin-installer.sh` (upstream follows `releases/latest`; the patch pins the
+  tag and adds a `sha256sum -c`, and fails if the upstream lines changed); `wrasse-gpu-detect` is built as a static musl binary in the
+  workflow so the image itself does not have to carry it; no payload is embedded, no R2 upload, no scheduled run, no boot verification
+  or Secure Boot test. Not changed: the ISO label stays `DAKOTA_LIVE` (hardcoded in the tooling's boot entries, and the live root is
+  found by it); the title is set with `--title`.
