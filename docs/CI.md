@@ -28,8 +28,15 @@ Any lookup failure fails the `plan` job, so nothing is built from a guessed vers
 
 ## Fail closed
 
-`just build` resolves the base image and each akmods image to a digest once, cosign-verifies the digest and builds from the
-digest. If an image does not exist for that Fedora version and kernel, or verification fails, the cell exits before any push.
+`just build` resolves the base image and each akmods image to a digest once and builds from the digest. The akmods digests are
+cosign-verified. The base is `quay.io/fedora/fedora-silverblue:<fedora version>` (`base_image` in `.github/build-matrix.json`);
+Fedora publishes no cosign, sigstore lookaside or OCI referrer signature for it, so it is pinned by digest only. The build also
+checks the base's `ostree.linux` and version labels against the requested release, so a Rawhide-aliased tag (`46`, `rawhide`) is
+refused. Whether a line is final, beta or branched still comes from the resolver (Bodhi and `releases/test/NN_Beta/`); the base tag
+only supplies the image, and `FEDORA_PRERELEASE` is set for any non-final version.
+What the Fedora base lacks compared with ublue's `silverblue-main` is added by `build_files/base/01-fedora-base.sh`.
+
+If an image does not exist for that Fedora version and kernel, or verification fails, the cell exits before any push.
 Its tag keeps pointing at the last good image. Other cells are unaffected (`fail-fast: false`); the `Summary` job turns the
 run red so the failure is visible.
 

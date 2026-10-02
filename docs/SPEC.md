@@ -10,7 +10,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 |---|---|---|
 | 0 | Recon + spec | done |
 | 1 | Base image changes | done (except `brand:`, deferred by the user) |
-| 2 | CI + release lines | partial: implemented, 3 items blocked (see "Phase 2 status notes") |
+| 2 | CI + release lines | partial: implemented, 2 items blocked (see "Phase 2 status notes") |
 | 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
 | 4 | Terminal (Zellij, multiplexer) | done (not run on hardware; see "Phase 4 status notes") |
 | 5 | Claude Code integration | partial: implemented and verified where possible, gating blocked on pending decision 2 (see "Phase 5 status notes") |
@@ -46,7 +46,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 - Streams today: `stable` (weekly cron, also `stable-daily`), `beta` (runs on push), `latest` (PR and manual). Workflows:
   `.github/workflows/build-image-{stable,beta,latest-main}.yml` calling `reusable-build.yml`; `build-images.yml` runs all.
   `Justfile` hard-codes the three tags and picks the akmods flavor by matching the tag text.
-- Pins live in `image-versions.yml` (base `silverblue-main-43/44`, `brew`), verified with cosign in `just verify-container`.
+- Pins live in `image-versions.yml` (`brew`), verified with cosign in `just verify-container`.
 - akmods are pulled in `build_files/base/03-install-kernel-akmods.sh` with `skopeo copy ghcr.io/ublue-os/akmods:<flavor>-<fedora>-<kernel>`
   (mutable tag, resolved inside the build). The kernel release is looked up by tag in `Justfile` `build`. This is the TOCTOU the spec fixes.
 - Origin has no branches except `main`; it carries upstream's tags (`stable-*`, `gts-*`, `v*`). No ISO tooling exists in-tree.
@@ -86,8 +86,8 @@ Release lines:
 
 GPU flavors: default (Mesa) and nvidia (open driver only, Turing+). Image names: `wrasse` and `wrasse-nvidia`. 6 images total.
 
-- Resolve each line's Fedora version automatically in CI. Check whether ublue's base images publish tags during branched; if
-  they do not, report options (e.g. building `reimagined` FROM `quay.io/fedora/fedora-silverblue`) instead of guessing.
+- Resolve each line's Fedora version automatically in CI. Base image: `quay.io/fedora/fedora-silverblue:<version>` for all lines
+  (user decision, see the Phase 2 status notes); ublue's base images do not publish branched Fedora.
 - akmods security: resolve each akmods image digest once, cosign-verify it, then pull by `@sha256:` everywhere. Never
   re-resolve mutable tags inside the build (fixes the TOCTOU issue reported against projectbluefin, issue #1264).
 - Fail closed: if the akmods image for a kernel/Fedora combo does not exist, or verification fails, skip pushing that
@@ -107,17 +107,21 @@ cosign-verified, built `@sha256:`; cells fail closed and are independent; gts/lt
 `changelogs.py`; secrets listed in `docs/CI-SECRETS.md`; overview in `docs/CI.md`. Resolver output on that date: stable 44, beta 45, branched 45,
 so next = reimagined = 45.
 
-**Finding: ublue base images do not publish branched Fedora.** `ghcr.io/ublue-os/silverblue-main` has only tags `43`, `44` (and `latest`) while
-Fedora 45 is branched and in beta; `ghcr.io/ublue-os/base-main` only `latest`, `gts`, `43`, `44`. `ghcr.io/ublue-os/akmods` and
-`akmods-nvidia-open` do publish `main-45-*` (kernel 7.2.8-300.fc45). `quay.io/fedora/fedora-silverblue` has `44`, `45`, `46`
-(46 is Rawhide), so a branched base exists upstream. Consequence: today the `reimagined` and `next` cells (both F45) fail closed at
-"base image does not exist" and keep their last tag; `stable` (F44) builds. Options (user decides, not made):
-1. Wait for ublue to publish `silverblue-main:45` (it will likely appear at or after the final release). Nothing to change.
-2. Build `reimagined`/`next` `FROM quay.io/fedora/fedora-silverblue:<ver>` while ublue has no base, losing whatever
-   `silverblue-main` adds (ublue repo/policy/service tweaks), which would have to be reproduced in `build_files`.
-3. Keep both lines on the newest version ublue publishes until then (breaks the "newest branched" rule).
-Status: `blocked` on this choice. The resolver and matrix need no change for any of them; only the base image reference in
-`just build` (and a per-line base setting in `.github/build-matrix.json` if option 2) would.
+**Finding: ublue base images do not publish branched Fedora.** `ghcr.io/ublue-os/silverblue-main` had only tags `43`, `44` while Fedora 45 was
+branched and in beta. `quay.io/fedora/fedora-silverblue` has `44`, `45`, `46` (46 is Rawhide).
+
+**Resolved (user decision, 2026-10-03): the base is `quay.io/fedora/fedora-silverblue:<version>` for every line**, not `silverblue-main`.
+Verified on 2026-10-03 (`skopeo`): tags `44`/`latest` = `44.20261002.0`, `45` = `45.20261001.n.0` (kernel `7.2.8-300.fc45`), `46`/`rawhide` =
+`Rawhide.20261002.n.0`. Labels: `containers.bootc=1`, `ostree.linux`, `org.opencontainers.image.version`; no label or tag says alpha, beta or
+stable (the `.n.` in the version is a nightly compose marker, not a stability marker), so classification stays with `resolve-lines.sh`
+(Bodhi plus `releases/test/NN_Beta/`) and `just build` checks `ostree.linux` contains `.fc<version>.` and the version label starts with
+`<version>.`, which rejects Rawhide. This repository has dated tags only for 41 to 43 (stale); 44 to 46 are floating tags. Upstream
+ublue-os/main itself builds from `quay.io/fedora-ostree-desktops/silverblue` (fresh dated tags), not `fedora-silverblue`; `base_image` in
+`.github/build-matrix.json` switches it in one line. Signatures: no `.sig` tag, no OCI referrers, no sigstore lookaside on quay.io; the base is
+pinned by digest resolved once, with no signature verification (nothing invented). Missing tag: the cell fails closed. What `silverblue-main`
+added is reproduced in `build_files/base/01-fedora-base.sh` (see `DIVERGENCE.md`). Unverified without a CI build: the whole script (package
+installs against Fedora plus negativo17, `distro-sync` overrides, dnf5 presence in the base, kernel-install stubs in `03-install-kernel-akmods.sh`),
+whether negativo17 stays complete for branched Fedora, and that nothing else in `silverblue-main` (for example the `rm /usr/bin/chsh`) mattered.
 
 Other blocked or open items:
 - `reimagined` nvidia and `reimagined` as the feature-first channel: pending decisions 3 and 4 (placeholder noted above).
@@ -126,7 +130,7 @@ Other blocked or open items:
 - On-device leftovers that still mention lts/gts/testing and the Bluefin repo (`ujust changelogs`, `ujust toggle-testing`, `ublue-image-repo`
   routing in `system_files/`) were not touched: they are runtime behavior tied to `brand:` and to what the `testing` channel becomes.
 - Not verified without CI: the whole workflow end to end (actionlint passes with the pre-existing `ubuntu-26.04` label ignored),
-  `just build` through the Containerfile (a dry run with `PODMAN=echo` produced correct build args), and Bodhi's state for a branched release
+  `just build` through the Containerfile (a dry run with `PODMAN=echo` produced correct build args for F44 and F45 and refused F46/F47), and Bodhi's state for a branched release
   after the final release day (the resolver treats `current` as final).
 
 ## Phase 3: DX as a sysext
@@ -297,8 +301,7 @@ Blocked or left open (not decided here):
   for `reimagined`; flip that boolean and the leaf disappears (tested). No other change.
 - *blocked (pending decision 4):* the preselected line is hardcoded to `stable` in `wrasse-installer-config` (`default_line`). This is a
   default, not the decision; change it there if `reimagined` should be the feature-first default.
-- *blocked (Phase 2 signing and base images):* the ISO needs `ghcr.io/wrasse-os/wrasse-nvidia:<tag>` to exist and be pullable; today
-  `reimagined`/`next` cells fail closed (see Phase 2 notes) and the signing key is not set up. The in-image `policy.json` covers only
+- *blocked (Phase 2 signing and base images):* the ISO needs `ghcr.io/wrasse-os/wrasse-nvidia:<tag>` to exist and be pullable; the signing key is not set up and no wrasse image has been built from the Fedora base yet. The in-image `policy.json` covers only
   `ghcr.io/ublue-os`, which matters for installing from `ghcr.io/wrasse-os` (the installer/fisherman path was not checked for signature policy).
 - Unverified (needs a CI run, then a VM with UEFI and a real NVIDIA machine): that dakota-iso's `build-live-squashfs.sh` works without
   `--oci-image`; that `systemctl enable` and the unit's `ConditionPathExists=/run/initramfs/live` hold in the live container; that the image

@@ -31,9 +31,9 @@ One git branch, several image tags. Each line is built for both images.
 | `next` | newest Fedora beta | Stays on its last version after that goes final, until the next beta. |
 | `reimagined` | newest branched Fedora (never Rawhide) | With no branched release it follows `next`. |
 
-There is no LTS or GTS line. Versions are resolved by CI (`docs/CI.md`). Two limits today: ublue does not publish base images
-for branched Fedora, so the `reimagined` and `next` cells may fail closed and keep their previous tag until that is resolved
-(`docs/SPEC.md`, Phase 2), and whether `reimagined` has an NVIDIA image is an open decision.
+There is no LTS or GTS line. Versions are resolved by CI (`docs/CI.md`). Images are built from Fedora's own
+`quay.io/fedora/fedora-silverblue:<version>`, so beta and branched lines build as soon as Fedora publishes the tag. One open
+decision remains: whether `reimagined` has an NVIDIA image.
 
 ## Rebase an existing bootc system
 
