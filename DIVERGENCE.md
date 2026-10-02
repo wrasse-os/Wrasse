@@ -162,3 +162,6 @@ Ported from `luohoa97/Bluefin-developers` (`files/system/`), files renamed with 
   Docker, Podman and libvirt sockets, and adds the invoking user to `docker` and `libvirt`. `off` reverses all of it and leaves
   `/var/lib/docker` and `/var/lib/libvirt` alone. The user comes from `PKEXEC_UID`, not from an argument. The existing
   `ujust devmode` (Homebrew based dev tools) is untouched.
+- **CI reports the DX sysext size** (`build.yml`, step "Report DX sysext size"): reads `wrasse-dx.raw` out of the built image and writes
+  its size and extension-release to the job summary for every cell. Size cannot be known without a build, so the spec's "report the
+  final size" is answered by the first CI run.

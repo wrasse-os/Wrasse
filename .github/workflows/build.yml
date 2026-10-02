@@ -172,6 +172,25 @@ jobs:
                                "${FLAVOR}" \
                                "${KERNEL_PIN}"
 
+      # Size of the DX sysext baked into the image (Phase 3 asks for this number; it cannot
+      # be known without a build). Reported only, never fails the cell.
+      - name: Report DX sysext size
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=/usr/share/wrasse/sysexts
+          size="$(sudo podman run --rm --entrypoint stat "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" -c '%s' "${dir}/wrasse-dx.raw")"
+          release="$(sudo podman run --rm --entrypoint cat "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${dir}/wrasse-dx.extension-release")"
+          {
+            echo "### DX sysext: ${LINE} ${FLAVOR}"
+            echo ""
+            echo "- wrasse-dx.raw: $(numfmt --to=iec --suffix=B "${size}") (${size} bytes)"
+            echo '- extension-release:'
+            echo '```'
+            echo "${release}"
+            echo '```'
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
+
       # https://github.com/actions/cache/issues/1533
       - name: Hack around permission issue caching
         shell: bash
