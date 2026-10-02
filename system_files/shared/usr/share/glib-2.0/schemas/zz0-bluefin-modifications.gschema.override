@@ -1,7 +1,7 @@
 #-------------- DESKTOP MODIFICATIONS --------------#
 
 [org.gnome.shell]
-favorite-apps = ['org.mozilla.firefox.desktop', 'org.mozilla.Thunderbird.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop', 'org.gnome.Software.desktop', 'code.desktop']
+favorite-apps = ['org.chromium.Chromium.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop', 'org.gnome.Ptyxis.desktop']
 enabled-extensions = ['appindicatorsupport@rgcjonas.gmail.com', 'bazaar-integration@kolunmi.github.io', 'caffeine@patapon.info', 'blur-my-shell@aunetx']
 
 [org.gnome.desktop.background]
@@ -28,8 +28,6 @@ allow-volume-above-100-percent=false
 theme-name="freedesktop"
 
 [org.gnome.desktop.wm.preferences]
-button-layout=":minimize,maximize,close"
-num-workspaces=4
 titlebar-font="Adwaita Sans Bold 12 @wght=700"
 
 [org.gnome.desktop.wm.keybindings]

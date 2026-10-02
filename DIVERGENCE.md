@@ -35,3 +35,6 @@ Fork point: tag `upstream-base` (`c9d08f4d`). One short entry per change: what a
   as a store suggestion, not a default.
 - **Added default Flatpaks** Chromium (replaces Firefox) and Clapper. Extension Manager, Flatseal and
   Mission Center were already defaults.
+- **Vanilla GNOME layout**: dropped the Ubuntu-style window buttons (`button-layout`) and fixed 4 workspaces
+  from the schema override, so GNOME defaults apply (dock was removed earlier). Favorite apps are now
+  Chromium, Files, Bazaar, Ptyxis (no Firefox, Thunderbird, GNOME Software or VS Code).
