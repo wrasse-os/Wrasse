@@ -288,6 +288,16 @@ jobs:
         with:
           string: ${{ env.IMAGE_REGISTRY }}
 
+      - name: Require signing key before any push
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+        run: |
+          if [[ -z "${COSIGN_PRIVATE_KEY}" ]]; then
+            echo "::error::SIGNING_SECRET is not set; refusing to push an unsigned image. See docs/CI-SECRETS.md."
+            exit 1
+          fi
+
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         run: |
