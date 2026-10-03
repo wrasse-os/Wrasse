@@ -303,13 +303,14 @@ Findings where reality differs from this spec:
   spec (GPU preselect, then release line, then disk/user) only exists in a network-install ISO: no `live-iso-mode` flag, no `local_imgref`,
   no embedded payload. That is what was built. An offline ISO would have to embed one image and could not ask the line.
 - **The installer's own NVIDIA logic is vendor-only and has no override** (`Systeminfo.has_nvidia_gpu`, any NVIDIA incl. Pascal; it also installs
-  the `nvidia_imgref` and tracks the base). Not used. Wrasse's catalog lists both flavors as separate leaves and `wrasse-gpu-detect`
-  chooses the preselection with Turing+ from NVIDIA's open-module device list.
+  the `nvidia_imgref` and tracks the base). Not used. Wrasse's catalog is generated per detected flavor (`gen-catalog.sh <flavor>`): the image step lists only the release lines, with the
+  detected flavor baked into each imgref, plus one "Use different graphics drivers" group for the other flavor. `wrasse-gpu-detect`
+  chooses the flavor with Turing+ from NVIDIA's open-module device list.
 
 Blocked or left open (not decided here):
-- *blocked (pending decision 3):* the catalog has a `wrasse-nvidia:reimagined` leaf only because `build-matrix.json` says `"nvidia": true`
-  for `reimagined`; flip that boolean and the leaf disappears (tested). No other change.
-- *blocked (pending decision 4):* the preselected line is hardcoded to `stable` in `wrasse-installer-config` (`default_line`). This is a
+- *blocked (pending decision 3):* a `wrasse-nvidia:reimagined` image is offered only because `build-matrix.json` says `"nvidia": true`
+  for `reimagined`; flip that boolean and that line falls back to `wrasse` on NVIDIA hardware and drops out of the escape group (tested). No other change.
+- *blocked (pending decision 4):* the preselected line is hardcoded to `stable` in `installer/gen-catalog.sh` (`default_image`). This is a
   default, not the decision; change it there if `reimagined` should be the feature-first default.
 - *blocked (Phase 2 signing and base images):* the ISO needs `ghcr.io/wrasse-os/wrasse-nvidia:<tag>` to exist and be pullable; the signing key is not set up and no wrasse image has been built from the Fedora base yet. The in-image `policy.json` covers only
   `ghcr.io/ublue-os`, which matters for installing from `ghcr.io/wrasse-os` (the installer/fisherman path was not checked for signature policy).

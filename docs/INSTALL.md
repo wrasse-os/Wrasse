@@ -65,7 +65,7 @@ until you do, DX is off on the new image and everything else works. See `docs/DX
 
 ## Live ISO
 
-The ISO is built from the image, which no longer carries the DX sysext, so it does not grow by 1.4 GB. `installer/README.md` describes a network-install ISO that autodetects the GPU and asks the release line. It is built by hand in
+The ISO is built from the image, which no longer carries the DX sysext, so it does not grow by 1.4 GB. `installer/README.md` describes a network-install ISO that autodetects the GPU (Mesa or NVIDIA) and asks the release line: the image step lists Reimagined / Next / Stable already pointing at the detected graphics variant, and a last group, "Use different graphics drivers", offers the other variant if the detection is wrong for your GPU. You can also force the choice before boot with `wrasse.gpu=nvidia` or `wrasse.gpu=default` on the kernel command line (or from the live session: write the word to `/etc/wrasse/installer-gpu`, run `sudo /usr/libexec/wrasse-installer-config`, restart the installer). It is built by hand in
 Actions ("Build Live ISO") and has not been run. The live ISO tooling boots through systemd-boot, so Secure Boot likely has to be
 off to boot the ISO; turn it on again afterwards and follow the next section.
 
