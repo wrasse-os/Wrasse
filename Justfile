@@ -193,6 +193,10 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_SHA=${base_image_sha}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE={{ brew_image }}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE_SHA=${brew_image_sha}")
+    case "${DX_BUILDER:-script}" in
+        script | mkosi) BUILD_ARGS+=("--build-arg" "DX_BUILDER=${DX_BUILDER:-script}") ;;
+        *) echo "DX_BUILDER must be script or mkosi, got '${DX_BUILDER}'" >&2; exit 1 ;;
+    esac
     BUILD_ARGS+=("--build-arg" "FEDORA_MAJOR_VERSION=${fedora_version}")
     BUILD_ARGS+=("--build-arg" "FEDORA_PRERELEASE=${fedora_prerelease}")
     BUILD_ARGS+=("--build-arg" "IMAGE_NAME=${image_name}")
