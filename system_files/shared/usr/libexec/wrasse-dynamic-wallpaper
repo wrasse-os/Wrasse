@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly WALLPAPER_BASE_PATH="/usr/share/backgrounds/bluefin"
+readonly WALLPAPER_BASE_PATH="/usr/share/backgrounds/wrasse"
 
 CURRENT_WALLPAPER="$(gsettings get org.gnome.desktop.background picture-uri)"
 CURRENT_WALLPAPER="${CURRENT_WALLPAPER#\'file://}"
@@ -11,8 +11,8 @@ CURRENT_WALLPAPER_DARK="$(gsettings get org.gnome.desktop.background picture-uri
 CURRENT_WALLPAPER_DARK="${CURRENT_WALLPAPER_DARK#\'file://}"
 CURRENT_WALLPAPER_DARK="${CURRENT_WALLPAPER_DARK%\'}"
 
-if [[ "$CURRENT_WALLPAPER" != "${WALLPAPER_BASE_PATH}"/*-bluefin.xml ]] ||
-   [[ "$CURRENT_WALLPAPER_DARK" != "${WALLPAPER_BASE_PATH}"/*-bluefin.xml ]]; then
+if [[ "$CURRENT_WALLPAPER" != "${WALLPAPER_BASE_PATH}"/*-wrasse.xml ]] ||
+   [[ "$CURRENT_WALLPAPER_DARK" != "${WALLPAPER_BASE_PATH}"/*-wrasse.xml ]]; then
     echo "User has a personal wallpaper set. Not changing it."
     exit 0
 fi
@@ -42,7 +42,7 @@ else
     MONTH_PADDED="$MONTH_NUM"
 fi
 
-WALLPAPER_PATH="${WALLPAPER_BASE_PATH}/${MONTH_PADDED}-bluefin.xml"
+WALLPAPER_PATH="${WALLPAPER_BASE_PATH}/${MONTH_PADDED}-wrasse.xml"
 
 if [[ ! -f "$WALLPAPER_PATH" ]]; then
     echo "Wallpaper file not found: $WALLPAPER_PATH" >&2

@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Bluefin Dynamic Wallpaper daily
+Description=Run Wrasse Dynamic Wallpaper daily
 
 [Timer]
 OnBootSec=1min

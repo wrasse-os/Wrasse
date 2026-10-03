@@ -62,7 +62,7 @@ run_gdbus "set GeoClue2 DesktopId" \
     --object-path "$CLIENT_PATH" \
     --method org.freedesktop.DBus.Properties.Set \
     org.freedesktop.GeoClue2.Client DesktopId \
-    "<'bluefin-dynamic-wallpaper'>" >/dev/null
+    "<'wrasse-dynamic-wallpaper'>" >/dev/null
 
 run_gdbus "set GeoClue2 RequestedAccuracyLevel" \
     --dest org.freedesktop.GeoClue2 \

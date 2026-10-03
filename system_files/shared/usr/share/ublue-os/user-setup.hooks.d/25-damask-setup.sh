@@ -22,7 +22,7 @@ run-in-background=true
 active-source='none'
 
 [app/drey/Damask/sources/slideshow]
-folder-uri='file:///run/host/usr/share/backgrounds/bluefin'
+folder-uri='file:///run/host/usr/share/backgrounds/wrasse'
 sort-by='random'
 EOF
 	chmod 0644 "${KEYFILE}"

@@ -28,7 +28,7 @@ RUN cargo build --release --locked && \
 
 FROM docker.io/library/alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS common-build
 
-COPY --from=ghcr.io/ublue-os/bluefin-wallpapers-gnome:latest@sha256:470572484d5b7b8f5ce422f8a7af4fbdbe66f6a7075a5ae425ce0658f3e3738c / /out/bluefin/usr/share
+COPY --from=ghcr.io/ublue-os/bluefin-wallpapers-gnome:latest@sha256:470572484d5b7b8f5ce422f8a7af4fbdbe66f6a7075a5ae425ce0658f3e3738c / /out/wallpapers/usr/share
 
 RUN apk add just curl
 
@@ -84,9 +84,12 @@ RUN set -eu; \
     install -Dm0644 /tmp/chairlift/data/io.projectbluefin.chairlift.firstrun.gschema.xml /out/shared/usr/share/glib-2.0/schemas/io.projectbluefin.chairlift.firstrun.gschema.xml
 
 # Artwork repo points to ~/.local/share for metadata
-RUN mkdir -p /out/bluefin/usr/share/backgrounds/bluefin && \
-  mv /out/bluefin/usr/share/*.jxl /out/bluefin/usr/share/*.xml /out/bluefin/usr/share/backgrounds/bluefin && \
-  sed -i 's|~\/\.local\/share|\/usr\/share|' /out/bluefin/usr/share/backgrounds/bluefin/*.xml /out/bluefin/usr/share/gnome-background-properties/*.xml
+# The wallpaper image names everything bluefin; install it under wrasse (files and the paths written inside the XML).
+RUN mkdir -p /out/wallpapers/usr/share/backgrounds/wrasse && \
+  mv /out/wallpapers/usr/share/*.jxl /out/wallpapers/usr/share/*.xml /out/wallpapers/usr/share/backgrounds/wrasse && \
+  sed -i 's|~\/\.local\/share|\/usr\/share|' /out/wallpapers/usr/share/backgrounds/wrasse/*.xml /out/wallpapers/usr/share/gnome-background-properties/*.xml && \
+  find /out/wallpapers/usr/share/backgrounds/wrasse /out/wallpapers/usr/share/gnome-background-properties -name '*bluefin*' | while read -r f; do mv "$f" "$(echo "$f" | sed s/bluefin/wrasse/g)"; done && \
+  sed -i 's/bluefin/wrasse/g; s/Bluefin/Wrasse/g' /out/wallpapers/usr/share/backgrounds/wrasse/*.xml /out/wallpapers/usr/share/gnome-background-properties/*.xml
 
 # Fetch game-devices-udev rules as individual raw files at a fixed commit SHA.
 # Codeberg/Gitea archive tarballs are generated on demand and their checksums
@@ -161,11 +164,11 @@ FROM ${BREW_IMAGE}@${BREW_IMAGE_SHA} AS brew
 FROM scratch AS ctx
 COPY /build_files /build_files
 COPY --from=common-build /out/shared /system_files/shared
-COPY --from=common-build /out/bluefin /system_files/shared
+COPY --from=common-build /out/wallpapers /system_files/shared
 COPY --from=brew /system_files /system_files/shared
 COPY /system_files /system_files
 
-## bluefin image section
+## wrasse image section
 FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_SHA} AS base
 
 ARG AKMODS_FLAVOR="coreos-stable"

@@ -1,0 +1,7 @@
+[Unit]
+Description=Wrasse Dynamic Wallpaper
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/wrasse-dynamic-wallpaper
