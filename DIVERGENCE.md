@@ -217,3 +217,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **`wrasse rollback` note**: the confirmation text said the DX sysext "is part of the image and rolls back with it"; it now says DX follows the image and uses the sysext downloaded for it, else `ujust dx update`. `wrasse install --dx` is unchanged (it still runs `ujust dx on`, which now downloads first). Why: the old sentence became false.
 
 - **Dark mode by default**: `color-scheme='prefer-dark'` in the schema override. Night Light stays at the GNOME default (off); the maintainer's own setting is also off.
+
+- **Live ISO dock**: pin `org.bootcinstaller.Installer.desktop` (the id the running window matches) instead of `dakota-installer.desktop`, which showed two installer icons; live favorites are now Installer, Files, Ptyxis.

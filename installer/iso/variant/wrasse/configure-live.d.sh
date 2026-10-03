@@ -29,3 +29,12 @@ for f in /etc/xdg/autostart/tuna-installer.desktop \
            -e 's/^Comment=Install Dakota to your computer/Comment=Install Wrasse to your computer/' \
            -e 's/^Icon=dakota$/Icon=org.bootcinstaller.Installer/' "${f}"
 done
+
+# The tooling pins `dakota-installer.desktop` in the dock, but the running installer window's app id is
+# org.bootcinstaller.Installer, which GNOME matches to org.bootcinstaller.Installer.desktop. Two different
+# desktop ids meant two installer icons (one pinned, one running). Pin the id the window really uses, and
+# use Wrasse's own live favorites instead of Firefox and Console.
+dconf_file=/etc/dconf/db/distro.d/50-live-iso
+grep -q '^favorite-apps=' "${dconf_file}"
+sed -i "s|^favorite-apps=.*|favorite-apps=['org.bootcinstaller.Installer.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Ptyxis.desktop']|" "${dconf_file}"
+dconf update
