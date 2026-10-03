@@ -1,0 +1,3 @@
+docker:
+  ghcr.io/wrasse-os/wrasse-dx:
+    use-sigstore-attachments: true

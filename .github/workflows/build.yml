@@ -182,55 +182,6 @@ jobs:
                                "${FLAVOR}" \
                                "${KERNEL_PIN}"
 
-      # DX_BUILDER=mkosi: the Containerfile left the sysext out. Build it with mkosi from the finished
-      # image's rootfs, layer it in, and retag the image so rechunk and push see it. Same fail-closed
-      # rules as the build: any failure here ends this cell before any push.
-      - name: Install mkosi
-        if: env.DX_BUILDER == 'mkosi'
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y python3-venv systemd-container
-          sudo python3 -m venv /opt/mkosi-venv
-          # v26, the release Fedora 44 ships; pinned by commit.
-          sudo /opt/mkosi-venv/bin/pip install "git+https://github.com/systemd/mkosi@84af20892b61c8e177e391f997ded8b4cb5514f2"
-          sudo ln -sf /opt/mkosi-venv/bin/mkosi /usr/local/bin/mkosi
-          mkosi --version
-
-      - name: Build DX sysext with mkosi
-        if: env.DX_BUILDER == 'mkosi'
-        shell: bash
-        run: |
-          set -euo pipefail
-          start="$(date +%s)"
-          out="${RUNNER_TEMP}/dx-mkosi"
-          sudo -E build_files/dx/build-sysext-mkosi.sh "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${out}"
-          sudo podman build --build-arg "BASE=localhost/${IMAGE_NAME}:${DEFAULT_TAG}" \
-              -f build_files/dx/Containerfile.mkosi-layer \
-              --tag "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${out}"
-          echo "- DX sysext builder: mkosi, $(( $(date +%s) - start )) s (mkosi + layer)" >> "${GITHUB_STEP_SUMMARY}"
-
-      # Size of the DX sysext baked into the image (Phase 3 asks for this number; it cannot
-      # be known without a build). Reported only, never fails the cell.
-      - name: Report DX sysext size
-        shell: bash
-        run: |
-          set -euo pipefail
-          dir=/usr/share/wrasse/sysexts
-          size="$(sudo podman run --rm --entrypoint stat "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" -c '%s' "${dir}/wrasse-dx.raw")"
-          release="$(sudo podman run --rm --entrypoint cat "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${dir}/wrasse-dx.extension-release")"
-          {
-            echo "### DX sysext: ${LINE} ${FLAVOR}"
-            echo ""
-            echo "- builder: ${DX_BUILDER}"
-            echo "- wrasse-dx.raw: $(numfmt --to=iec --suffix=B "${size}") (${size} bytes)"
-            echo '- extension-release:'
-            echo '```'
-            echo "${release}"
-            echo '```'
-          } | tee -a "${GITHUB_STEP_SUMMARY}"
-
       # https://github.com/actions/cache/issues/1533
       - name: Hack around permission issue caching
         shell: bash
@@ -428,6 +379,72 @@ jobs:
           subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      # DX sysext (docs/DX-SYSEXT.md): not part of the image. Built from the finished, rechunked image
+      # and published as its own cosign-signed OCI artifact, so the image above is already pushed,
+      # signed and attested before any of this runs. A failure here turns this cell red but cannot
+      # block or undo the image: DX is then simply unavailable for this image build until a re-run.
+      - name: Install mkosi
+        if: env.DX_BUILDER == 'mkosi'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y python3-venv systemd-container
+          sudo python3 -m venv /opt/mkosi-venv
+          # v26, the release Fedora 44 ships; pinned by commit.
+          sudo /opt/mkosi-venv/bin/pip install "git+https://github.com/systemd/mkosi@84af20892b61c8e177e391f997ded8b4cb5514f2"
+          sudo ln -sf /opt/mkosi-venv/bin/mkosi /usr/local/bin/mkosi
+          mkosi --version
+
+      - name: Build DX sysext
+        id: dx-build
+        shell: bash
+        run: |
+          set -euo pipefail
+          start="$(date +%s)"
+          out="${RUNNER_TEMP}/dx"
+          sudo -E build_files/dx/build-dx.sh "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${out}"
+          size="$(stat -c '%s' "${out}/wrasse-dx.raw")"
+          {
+            echo "### DX sysext: ${LINE} ${FLAVOR}"
+            echo ""
+            echo "- builder: ${DX_BUILDER}, $(( $(date +%s) - start )) s"
+            echo "- wrasse-dx.raw: $(numfmt --to=iec --suffix=B "${size}") (${size} bytes)"
+            echo '- extension-release:'
+            echo '```'
+            cat "${out}/wrasse-dx.extension-release"
+            echo '```'
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      - name: Publish DX sysext
+        id: dx-publish
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DX_REPO: ${{ steps.registry_case.outputs.lowercase }}/wrasse-dx
+        run: |
+          set -euo pipefail
+          os_release="$(sudo podman run --rm --entrypoint cat "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" /usr/lib/os-release)"
+          image_id="$(sed -n 's/^IMAGE_ID="\(.*\)"$/\1/p' <<<"${os_release}")"
+          image_version="$(sed -n 's/^IMAGE_VERSION="\(.*\)"$/\1/p' <<<"${os_release}")"
+          .github/scripts/publish-dx.sh "${RUNNER_TEMP}/dx" "${DX_REPO}" \
+              "${image_id}" "${image_version}" "${LINE}" "${FEDORA_VERSION}"
+
+      - name: Report DX sysext status
+        if: always() && (steps.dx-build.outcome == 'failure' || steps.dx-publish.outcome == 'failure')
+        shell: bash
+        run: |
+          msg="DX sysext for ${LINE} ${FLAVOR} was NOT published (build: ${{ steps.dx-build.outcome }}, publish: ${{ steps.dx-publish.outcome }}). The image itself was pushed and signed; 'ujust dx on' will fail on it until the DX artifact exists."
+          echo "::error::${msg}"
+          {
+            echo "### DX sysext UNAVAILABLE: ${LINE} ${FLAVOR}"
+            echo ""
+            echo "${msg}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   check:
     name: Summary

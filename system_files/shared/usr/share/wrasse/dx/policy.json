@@ -1,0 +1,27 @@
+{
+    "default": [
+        {
+            "type": "reject"
+        }
+    ],
+    "transports": {
+        "docker": {
+            "ghcr.io/wrasse-os/wrasse-dx": [
+                {
+                    "type": "sigstoreSigned",
+                    "keyPath": "/usr/lib/pki/containers/wrasse.pub",
+                    "signedIdentity": {
+                        "type": "matchRepository"
+                    }
+                }
+            ]
+        },
+        "dir": {
+            "": [
+                {
+                    "type": "insecureAcceptAnything"
+                }
+            ]
+        }
+    }
+}
