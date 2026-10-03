@@ -19,6 +19,7 @@ deferred). `00-entry.just` imports `flutter.just` optionally; that file does not
 | Recipe | What it does |
 |---|---|
 | `update` (alias `upgrade`) | Updates the system, Flatpaks and Homebrew packages together. |
+| `update-soft` | Runs `bootc upgrade --soft-reboot=auto --apply`: restarts userspace only when the new image has the same kernel, initrd and kernel arguments, otherwise a full reboot. Always restarts, and does not update Flatpaks or Homebrew. |
 | `toggle-updates [enable\|disable\|cancel]` (alias `auto-update`) | Turns automatic updates on or off; with an argument it runs without the prompt. |
 | `changelogs` | Shows the changelog (still upstream's; see Known stale below). |
 | `bios`, `bios-info` | Reboot into the firmware setup; show BIOS info. |
@@ -63,3 +64,17 @@ deferred). `00-entry.just` imports `flutter.just` optionally; that file does not
   is wrong on Wrasse. To move between `reimagined`, `next` and `stable`, use `sudo bootc switch` (`docs/INSTALL.md`).
 - `changelogs`, `update` text and recipe headings still point to Bluefin resources. These belong to `brand:` and to deciding what
   the testing channel becomes (`docs/SPEC.md`, Phase 2).
+
+## Soft-reboot updates
+
+`uupd` (the automatic updater) runs `bootc upgrade --quiet --progress-fd 3` and has no soft-reboot setting; its `--apply` does a
+regular reboot. Do not rely on it for soft reboots; use `ujust update-soft` when you choose to restart. The bootc docs
+(`bootc-upgrades(7)`, "Soft reboots") define `--soft-reboot=auto` as: prepare a soft reboot if the target deployment is capable,
+otherwise leave it for a regular reboot; `--apply` triggers the restart. Limits:
+
+- A new kernel or initrd (most Fedora kernel updates) cannot be soft-rebooted, so you get a normal reboot.
+- A soft reboot restarts all userspace (session, services, containers), it only skips firmware and the kernel boot. Running
+  processes still end.
+- The kernel keeps running, so a kernel security fix is not active until a full reboot.
+
+Checked against bootc 1.16.7 (Fedora 44). Fedora 45's bootc version was not checked.

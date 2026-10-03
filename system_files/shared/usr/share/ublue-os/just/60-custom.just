@@ -131,3 +131,26 @@ rollback:
     if command -v gum >/dev/null 2>&1; then
         if gum confirm "Restart now?"; then systemctl reboot; fi
     fi
+
+# Update the OS image and restart userspace only when possible (bootc upgrade --soft-reboot=auto --apply)
+[group('System')]
+update-soft:
+    #!/usr/bin/bash
+    set -euo pipefail
+
+    # uupd runs plain `bootc upgrade --quiet --progress-fd 3` and has no soft-reboot option, so this recipe
+    # is the manual path. --soft-reboot=auto restarts userspace only if the new image keeps the same kernel,
+    # initrd and kernel arguments; otherwise bootc does a regular reboot. Both end with a restart.
+    echo "This downloads the next image and restarts NOW: a userspace-only (soft) restart if the kernel and"
+    echo "initrd are unchanged, otherwise a full reboot. Save your work first."
+    echo "Flatpaks and Homebrew are not updated here; use: ujust update"
+    echo
+
+    if command -v gum >/dev/null 2>&1; then
+        gum confirm "Update and restart now?" || { echo "Cancelled."; exit 0; }
+    else
+        read -r -p "Update and restart now? [y/N] " ANSWER
+        [[ "${ANSWER}" =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
+    fi
+
+    pkexec bootc upgrade --soft-reboot=auto --apply
