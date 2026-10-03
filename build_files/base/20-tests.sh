@@ -84,6 +84,11 @@ test -f /usr/lib/systemd/user/wrasse-agents.slice
 test -f /usr/lib/systemd/user/wrasse-agents.slice.d/20-oomd.conf
 test -f /usr/share/wrasse/skills/wrasse/SKILL.md
 test -x /usr/share/ublue-os/user-setup.hooks.d/30-wrasse-agent-skill.sh
+test -f /usr/share/wrasse/AGENTS.md
+test -x /usr/share/ublue-os/user-setup.hooks.d/31-wrasse-agents-md.sh
+grep -qF 'ln -s "${AGENTS_SRC}" "${link}"' /usr/share/ublue-os/user-setup.hooks.d/31-wrasse-agents-md.sh
+grep -q 'wrasse install' /usr/share/wrasse/AGENTS.md
+grep -q 'AGENTS.md' /usr/share/wrasse/skills/wrasse/SKILL.md
 test -f /etc/profile.d/wrasse-path.sh
 test -f /usr/share/fish/vendor_conf.d/wrasse-path.fish
 # The stub launches through wrasse-agent-run, which runs the command in a scope under the agent slice with a MemoryMax.

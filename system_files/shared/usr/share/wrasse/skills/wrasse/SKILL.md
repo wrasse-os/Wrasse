@@ -5,6 +5,9 @@ description: Rules for working on Wrasse OS, an immutable Fedora bootc desktop. 
 
 # Wrasse OS
 
+The short, agent-neutral version of these rules is `/usr/share/wrasse/AGENTS.md` (linked to `~/AGENTS.md`). This skill is the
+Claude Code detail behind it.
+
 Wrasse is an image-based Fedora desktop (bootc, GNOME). `/usr` is read-only and the image is the unit of update and
 rollback. Work with that, not around it.
 
