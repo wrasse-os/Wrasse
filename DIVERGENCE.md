@@ -195,3 +195,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **Bazaar "Agents and Developer Tools" section**: appended to `system_files/shared/etc/bazaar/curated.yaml` in the existing section schema (title/subtitle/appids list), English strings only. App IDs each returned HTTP 200 from `flathub.org/api/v2/appstream/<id>`: OpenCode, Alpaca, LM Studio, Newelle, Zed, GitButler, BoxBuddy, Bruno. Why: surface agent and developer tools in the store. Not listed because not on Flathub: Ghostty (`com.mitchellh.ghostty` 404) and no Claude desktop client exists there.
 
 - **ISO workflow**: run shellcheck at warning level; info-level SC1091 ("not following pin.env") failed the first ISO run.
+
+- **DX sysext package list in `packages.txt`**: `build_files/dx/packages.txt` is now the one list of DX packages, read by `build-sysext.sh` (previously an inline array). Why: the mkosi builder (added next) must install exactly the same packages; one file avoids two lists drifting. No change to what the script builds.

@@ -1,0 +1,49 @@
+# DX sysext package list: one package per line, '#' starts a comment.
+# Single source of truth for both builders (build-sysext.sh and build-sysext-mkosi.sh).
+# Dependencies already in the image are not part of the sysext.
+
+# Docker (Fedora's moby-engine, not Docker Inc's docker-ce, so no third-party repo
+# has to track branched Fedora)
+moby-engine
+docker-compose
+docker-buildx
+# Podman extras (podman itself is in the image)
+podman-compose
+podman-machine
+podman-tui
+udica
+# libvirt / QEMU
+libvirt-client
+libvirt-daemon-config-network
+libvirt-daemon-kvm
+libvirt-nss
+qemu-img
+qemu-kvm
+edk2-ovmf
+swtpm
+virt-install
+virt-manager
+virt-viewer
+# VS Code (Microsoft repo, enabled for this stage only)
+code
+cascadia-code-fonts
+# Performance tools
+bcc
+bpftop
+bpftrace
+iotop-c
+nicstat
+numactl
+perf
+sysprof
+sysstat
+tiptop
+trace-cmd
+# GNOME / GTK development
+flatpak-builder
+gjs-devel
+gtk4-devel
+libadwaita-devel
+mutter-devel
+# Android
+waydroid

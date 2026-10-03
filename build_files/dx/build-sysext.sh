@@ -16,56 +16,16 @@ WORK_DIR="/tmp/dx-work"
 ROOTFS="${WORK_DIR}/rootfs"
 RPMS="${WORK_DIR}/rpms"
 FILES_DIR="/ctx/build_files/dx/files"
+PACKAGES_FILE="/ctx/build_files/dx/packages.txt"
 FILE_CONTEXTS="/etc/selinux/targeted/contexts/files/file_contexts"
 
-# Packages from Fedora repos. Dependencies already in the image are not downloaded.
-PACKAGES=(
-    # Docker (Fedora's moby-engine, not Docker Inc's docker-ce, so no third-party repo
-    # has to track branched Fedora)
-    moby-engine
-    docker-compose
-    docker-buildx
-    # Podman extras (podman itself is in the image)
-    podman-compose
-    podman-machine
-    podman-tui
-    udica
-    # libvirt / QEMU
-    libvirt-client
-    libvirt-daemon-config-network
-    libvirt-daemon-kvm
-    libvirt-nss
-    qemu-img
-    qemu-kvm
-    edk2-ovmf
-    swtpm
-    virt-install
-    virt-manager
-    virt-viewer
-    # VS Code (Microsoft repo, enabled for this stage only)
-    code
-    cascadia-code-fonts
-    # Performance tools
-    bcc
-    bpftop
-    bpftrace
-    iotop-c
-    nicstat
-    numactl
-    perf
-    sysprof
-    sysstat
-    tiptop
-    trace-cmd
-    # GNOME / GTK development
-    flatpak-builder
-    gjs-devel
-    gtk4-devel
-    libadwaita-devel
-    mutter-devel
-    # Android
-    waydroid
-)
+# Packages from Fedora repos (and the vscode repo below). Dependencies already in the image are not downloaded.
+# The list lives in packages.txt, shared with the mkosi builder.
+mapfile -t PACKAGES < <(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "${PACKAGES_FILE}")
+if [[ "${#PACKAGES[@]}" -eq 0 ]]; then
+    echo "No packages in ${PACKAGES_FILE}" >&2
+    exit 1
+fi
 
 # Same RPM-to-sysext constraints as fedora-sysexts: a sysext only merges /usr (and /opt).
 for tool in rpm2cpio cpio mkfs.erofs fsck.erofs dump.erofs; do
