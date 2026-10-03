@@ -203,3 +203,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **`DX_BUILDER` switch**: Containerfile stage `dx-build` is now selected by `ARG DX_BUILDER` (`script` = old `dx-script` stage, `mkosi` = empty `dx-mkosi` stage); `just build` passes it from the environment, default `script`, and rejects other values. Why: the mkosi sysext is built outside `podman build` and layered in afterwards. The default path builds the same stage as before.
 
 - **CI `dx_builder` input**: `build.yml` gets a `workflow_dispatch` input `dx_builder` (script or mkosi, default script) that sets `DX_BUILDER`; for mkosi, steps install a pinned mkosi, build the sysext from the built image, layer it in and retag, and the size report names the builder. Why: compare the two builders in CI without changing scheduled, push or PR builds.
+
+- **`docs/DX-SYSEXT.md`**: documents both DX sysext builders, how to switch, the 1.4 GB baseline and what to compare. Why: record the mkosi trial design and its checklist.
