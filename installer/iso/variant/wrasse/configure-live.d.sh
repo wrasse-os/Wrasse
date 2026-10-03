@@ -1,15 +1,16 @@
 #!/usr/bin/bash
 # Wrasse hook for dakota-iso's live/src/configure-live.sh (it runs this last, from /tmp/src/wrasse/).
 # Runs inside the live container build. Files next to this script come from installer/iso/variant/wrasse/
-# plus two build outputs the workflow drops in: wrasse-gpu-detect (static musl binary) and images.json.tmpl
-# (installer/gen-catalog.sh).
+# plus build outputs the workflow drops in: wrasse-gpu-detect (static musl binary) and images.wrasse.json /
+# images.wrasse-nvidia.json (installer/gen-catalog.sh, one catalog per detected graphics flavor).
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 install -Dm755 "${here}/wrasse-gpu-detect" /usr/bin/wrasse-gpu-detect
 install -Dm755 "${here}/wrasse-installer-config" /usr/libexec/wrasse-installer-config
-install -Dm644 "${here}/images.json.tmpl" /usr/share/wrasse/installer/images.json.tmpl
+install -Dm644 "${here}/images.wrasse.json" /usr/share/wrasse/installer/images.wrasse.json
+install -Dm644 "${here}/images.wrasse-nvidia.json" /usr/share/wrasse/installer/images.wrasse-nvidia.json
 install -Dm644 "${here}/wrasse-installer-config.service" /usr/lib/systemd/system/wrasse-installer-config.service
 systemctl enable wrasse-installer-config.service
 

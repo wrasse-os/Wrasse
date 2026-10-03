@@ -89,7 +89,9 @@ jobs:
           test ! -e "${variant}"
           cp -r installer/iso/variant/wrasse "${variant}"
           install -m755 installer/gpu-detect/target/x86_64-unknown-linux-musl/release/wrasse-gpu-detect "${variant}/wrasse-gpu-detect"
-          installer/gen-catalog.sh > "${variant}/images.json.tmpl"
+          for flavor in wrasse wrasse-nvidia; do
+            installer/gen-catalog.sh "${flavor}" > "${variant}/images.${flavor}.json"
+          done
           # Follow the pinned bootc-installer release instead of releases/latest, and verify its sha256.
           installer/iso/pin-installer.sh iso-tooling/live/src/install-flatpaks.sh
 

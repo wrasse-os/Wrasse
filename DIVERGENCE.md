@@ -149,9 +149,12 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
   GPU (NVIDIA's open-module device list via `gen-nvidia-ids.sh`), else `wrasse`. Override: `--override`, `$WRASSE_GPU`,
   `wrasse.gpu=` on the kernel command line, `/etc/wrasse/installer-gpu`. Why: the installer's own check is vendor-only and has no
   override.
-- `installer/gen-catalog.sh` builds `/etc/bootc-installer/images.json` from `build-matrix.json` (two GPU groups, three lines each; a
-  line with `"nvidia": false` loses its NVIDIA leaf). `installer/iso/variant/wrasse/` runs `wrasse-gpu-detect` at live boot and sets
-  `default_image`. The ISO is a network install because the installer drops its image step (where the release line is asked) in
+- `installer/gen-catalog.sh <wrasse|wrasse-nvidia>` builds the complete `/etc/bootc-installer/images.json` for one detected flavor from
+  `build-matrix.json`: only the release lines as leaves (NVIDIA is a hardware variant, not a line), the detected flavor in each imgref,
+  and one "Use different graphics drivers" group with the other flavor (omitted if none exists). A line with `"nvidia": false` falls
+  back to the wrasse image on NVIDIA hardware. build-iso.yml generates both catalogs; `installer/iso/variant/wrasse/` runs
+  `wrasse-gpu-detect` at live boot and installs the matching one. Kept inside one "Wrasse" group because the installer's top level
+  only accepts groups (`ListBox.add_row` on a top-level leaf does not exist). The ISO is a network install because the installer drops its image step (where the release line is asked) in
   live-ISO mode.
 - `build-iso.yml` adapts `projectbluefin/dakota-iso` (what Bluefin's ISOs use now, not `ublue-os/titanoboa`), pinned to commit
   `9c123eea`, with `tuna-os/bootc-installer` `v2026.09.26-253d6938` pinned by bundle sha256 (`installer/iso/pin.env`,

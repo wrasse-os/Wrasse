@@ -1,17 +1,15 @@
 #!/usr/bin/bash
-# Live ISO boot step: fill in the installer catalog's preselected image.
+# Live ISO boot step: pick the installer image catalog for the detected graphics flavor.
 #
 # Runs wrasse-gpu-detect (Turing or newer NVIDIA -> wrasse-nvidia, else wrasse; override with
-# wrasse.gpu=nvidia|default on the kernel command line) and writes /etc/bootc-installer/images.json
-# from the template with default_image = ghcr.io/wrasse-os/<image>:<default line>. The installer then
-# opens the image step with that GPU group expanded and one release line ticked; the user can pick
-# any other leaf, which is the override.
+# wrasse.gpu=nvidia|default on the kernel command line) and installs the matching pre-generated
+# catalog (images.wrasse.json or images.wrasse-nvidia.json, from installer/gen-catalog.sh) as
+# /etc/bootc-installer/images.json. The detected flavor is baked into each release line's imgref;
+# the catalog's last group offers the other graphics variant as the override.
 set -euo pipefail
 
-template="${WRASSE_INSTALLER_TEMPLATE:-/usr/share/wrasse/installer/images.json.tmpl}"
+dir="${WRASSE_INSTALLER_CATALOG_DIR:-/usr/share/wrasse/installer}"
 out="${WRASSE_INSTALLER_CATALOG:-/etc/bootc-installer/images.json}"
-registry="ghcr.io/wrasse-os"
-default_line="stable"
 
 flavor="$(wrasse-gpu-detect --explain)" || flavor=wrasse
 case "${flavor}" in
@@ -19,10 +17,9 @@ case "${flavor}" in
     *) echo "wrasse-installer-config: unexpected detect output '${flavor}', using wrasse" >&2; flavor=wrasse ;;
 esac
 
-default_image="${registry}/${flavor}:${default_line}"
 mkdir -p "$(dirname "${out}")"
 tmp="$(mktemp "${out}.XXXXXX")"
-sed "s|@DEFAULT_IMAGE@|${default_image}|" "${template}" > "${tmp}"
+cp "${dir}/images.${flavor}.json" "${tmp}"
 chmod 0644 "${tmp}"
 mv -f "${tmp}" "${out}"
-echo "wrasse-installer-config: preselected ${default_image}"
+echo "wrasse-installer-config: installed the ${flavor} catalog"
