@@ -10,6 +10,15 @@ rm -rf /usr/share/doc
 # Remove kernel-devel from rpmdb because all package files are removed from /usr/src
 rpm --erase --nodeps kernel-devel
 
+# Bibata Modern Classic cursor theme (black with a white outline, the Linux Mint default; GPL-3.0).
+# Pinned release asset with its sha256; one cursor theme in light and dark mode on purpose.
+BIBATA_VERSION="v2.0.7"
+BIBATA_SHA256="7d3495864e5bbef02f5e77de760b2905903b63c71495a78ef6306d19a3b556d8"
+ghcurl "https://github.com/ful1e5/Bibata_Cursor/releases/download/${BIBATA_VERSION}/Bibata-Modern-Classic.tar.xz" --retry 3 -o /tmp/bibata.tar.xz
+echo "${BIBATA_SHA256}  /tmp/bibata.tar.xz" | sha256sum -c -
+tar -xJf /tmp/bibata.tar.xz -C /usr/share/icons
+rm -f /tmp/bibata.tar.xz
+
 # Automatic wallpaper changing by month
 HARDCODED_RPM_MONTH="12"
 sed -i "/picture-uri/ s/${HARDCODED_RPM_MONTH}/$(date +%m)/" "/usr/share/glib-2.0/schemas/zz0-wrasse-modifications.gschema.override"

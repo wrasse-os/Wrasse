@@ -251,3 +251,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **`docs/BRANDING-HITS.md` outcome section**: remaining hits, artwork still needing Wrasse versions, and the extra `ujust contribute` removal. Why: keep the classification honest after the renames.
 
 - **fastfetch logo**: Wrasse ASCII logo (`/usr/share/wrasse/fastfetch/logo.txt`, original placeholder art) instead of the distro-ID fallback logo. The OS line already reads the Wrasse `os-release`.
+
+- **Cursor theme**: Bibata Modern Classic (as Linux Mint), pinned v2.0.7 release asset verified by sha256, set as the default `cursor-theme` in light and dark mode. One consistent theme on purpose: GNOME has no per-color-scheme cursor setting and a switcher would not update Flatpak/Qt/Xwayland apps live. Bibata is GPL-3.0.

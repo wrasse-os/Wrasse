@@ -85,6 +85,8 @@ if [[ "${IMAGE_NAME}" =~ nvidia ]]; then
   done
 fi
 
+test -f /usr/share/icons/Bibata-Modern-Classic/cursor.theme
+
 # Claude Code integration: the lazy stub, the agent memory slice, the skill and the PATH snippets.
 test -x /usr/bin/claude
 test -f /usr/lib/systemd/user/wrasse-agents.slice
