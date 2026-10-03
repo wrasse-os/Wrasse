@@ -43,6 +43,28 @@ dnf5 -y install /tmp/akmods/ublue-os/ublue-os-akmods-addons*.rpm
 dnf5 config-manager setopt fedora-multimedia.enabled=1
 dnf5 config-manager setopt fedora-multimedia.priority=90
 
+# Pre-release Fedora: negativo17's ffmpeg stack for branched releases is built against a newer libxml2 than Fedora ships
+# (libavformat needs libxml2.so.16; Fedora 45 provides only libxml2.so.2), and its libavcodec obsoletes libavcodec-free,
+# so it cannot be installed. Hide exactly that stack from the repo and use Fedora's ffmpeg-free instead (see
+# docs/CI.md). The mesa, libva, libheif, intel, libfdk-aac and pipewire-libs-extra builds from negativo17 still resolve
+# there and stay in use. Remove this once negativo17's libavformat installs on the pre-release.
+NEGATIVO17_FFMPEG_STACK=(
+    ffmpeg ffmpeg-devel ffmpeg-libs
+    libavcodec libavcodec-devel
+    libavdevice libavdevice-devel
+    libavfilter libavfilter-devel
+    libavformat libavformat-devel
+    libavutil libavutil-devel
+    libpostproc libpostproc-devel
+    libswresample libswresample-devel
+    libswscale libswscale-devel
+)
+FFMPEG_PACKAGES=(ffmpeg ffmpeg-libs libavcodec)
+if [[ "${FEDORA_PRERELEASE:-0}" == "1" ]]; then
+    dnf5 config-manager setopt "fedora-multimedia.excludepkgs=$(IFS=,; echo "${NEGATIVO17_FFMPEG_STACK[*]}")"
+    FFMPEG_PACKAGES=(ffmpeg-free)
+fi
+
 # Replaces: main install.sh OVERRIDES. Swap mesa and the media libraries to the negativo17 builds and hold them
 # so the later `dnf install` calls in 04-packages.sh cannot move them back. clean-stage.sh clears the versionlock.
 # mesa-va-drivers is not listed: it is a Provides of mesa-dri-drivers in Fedora 44/45.
@@ -70,8 +92,6 @@ BASE_PACKAGES=(
     apr
     apr-util
     distrobox
-    ffmpeg
-    ffmpeg-libs
     ffmpegthumbnailer
     flatpak-spawn
     fuse
@@ -85,7 +105,6 @@ BASE_PACKAGES=(
     htop
     ibus-unikey
     intel-vaapi-driver
-    libavcodec
     libcamera
     libcamera-gstreamer
     libcamera-ipa
@@ -117,7 +136,8 @@ BASE_PACKAGES=(
     yubikey-manager
     zstd
 )
-dnf5 -y install "${BASE_PACKAGES[@]}"
+# FFMPEG_PACKAGES is negativo17's ffmpeg, ffmpeg-libs and libavcodec, or Fedora's ffmpeg-free on pre-release (set above).
+dnf5 -y install "${BASE_PACKAGES[@]}" "${FFMPEG_PACKAGES[@]}"
 
 # oversteer-udev exists only in the ublue-os/packages COPR (verified for Fedora 44 and 45), so it is installed
 # alone with the COPR enabled just for that call.
