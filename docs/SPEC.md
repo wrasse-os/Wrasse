@@ -120,7 +120,7 @@ or stable, so classification stays with `resolve-lines.sh` (Bodhi plus `releases
 once, verifies it, checks `ostree.linux` contains `.fc<version>.` and the version label starts with `<version>.`, refuses a digest equal to the
 `rawhide` tag, then builds `@sha256:`. A missing tag or failed verification fails the cell closed. What `silverblue-main` added is reproduced in
 `build_files/base/01-fedora-base.sh` (see `DIVERGENCE.md`). Unverified without a CI build: that script, the kernel-install stubs, and whether
-negativo17 stays complete for branched Fedora.
+negativo17 stays complete for branched Fedora (it does not: its F45 ffmpeg stack is excluded, see `docs/CI.md`, "Pre-release codecs").
 
 Other blocked or open items:
 - `reimagined` nvidia and `reimagined` as the feature-first channel: pending decisions 3 and 4 (placeholder noted above).
