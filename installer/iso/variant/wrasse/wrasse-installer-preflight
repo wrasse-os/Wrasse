@@ -12,8 +12,14 @@
 #
 # Escape hatch: wrasse.ignore_ram=1 on the kernel command line skips the check (unsupported, the install may be killed).
 #
-# Test hooks: WRASSE_MEMINFO (default /proc/meminfo), WRASSE_CMDLINE (default /proc/cmdline), WRASSE_PREFLIGHT_DIALOG
-# (default zenity; the command that shows the message). Sourcing this file only defines the functions.
+# No network yet: the installer downloads about 5 GB, so it needs a connection. This wrapper only explains how to get
+# one (Ethernet, phone USB tethering, Wi-Fi from the system menu) and then starts the installer anyway; the
+# installer's own connection check page is the real gate. It waits a few seconds for a default route first, because
+# NetworkManager may still be bringing a wired link up when the installer autostarts.
+#
+# Test hooks: WRASSE_MEMINFO (default /proc/meminfo), WRASSE_CMDLINE (default /proc/cmdline), WRASSE_NETROUTE
+# (default /proc/net/route), WRASSE_ROUTE_WAIT (seconds to wait for a route, default 8), WRASSE_PREFLIGHT_DIALOG
+# (default zenity; the command that shows messages). Sourcing this file only defines the functions.
 set -euo pipefail
 
 WRASSE_MIN_RAM_KB=7000000
@@ -59,15 +65,47 @@ To install anyway (not supported), restart the live ISO and add wrasse.ignore_ra
 MSG
 }
 
-show_message() { # <text>
-    local dialog="${WRASSE_PREFLIGHT_DIALOG:-zenity}"
+# show_message <text> [kind]: kind is "error" (default, RAM) or "info" (no network yet).
+show_message() {
+    local dialog="${WRASSE_PREFLIGHT_DIALOG:-zenity}" kind="${2:-error}" title="Not enough memory"
+    [[ "${kind}" == info ]] && title="No internet connection yet"
     printf '%s\n' "${1}" >&2
     if [[ "${dialog}" == zenity ]]; then
         command -v zenity >/dev/null 2>&1 || return 0
-        zenity --error --no-markup --title="Not enough memory" --width=480 --text="${1}" || true
+        zenity "--${kind}" --no-markup --title="${title}" --width=480 --text="${1}" || true
     else
         "${dialog}" "${1}" || true
     fi
+}
+
+# has_default_route [route file]: success when the kernel has an IPv4 default route (destination 00000000).
+has_default_route() {
+    local file="${1:-${WRASSE_NETROUTE:-/proc/net/route}}"
+    awk 'NR > 1 && $2 == "00000000" { found = 1 } END { exit !found }' "${file}" 2>/dev/null
+}
+
+# wait_for_route: poll for a default route for up to WRASSE_ROUTE_WAIT seconds (default 8).
+wait_for_route() {
+    local waited=0 max="${WRASSE_ROUTE_WAIT:-8}"
+    while ! has_default_route; do
+        (( waited >= max )) && return 1
+        sleep 1
+        waited=$(( waited + 1 ))
+    done
+}
+
+# offline_message: how to get connected, for a machine with no route (any link type counts, Wi-Fi is not required).
+offline_message() {
+    cat <<MSG
+This computer is not connected to the internet yet. Wrasse downloads about 5 GB during the install, so it needs a connection.
+
+Pick whichever you have:
+ - Wired: plug in an Ethernet cable.
+ - Phone: connect it with a USB cable and turn on USB tethering.
+ - Wi-Fi: open the system menu at the top right of the screen, choose Wi-Fi, and pick your network.
+
+The installer re-checks the connection and continues once it is online. A computer with no way to get online cannot install Wrasse.
+MSG
 }
 
 preflight_main() {
@@ -86,6 +124,9 @@ preflight_main() {
     else
         # Cannot read MemTotal: do not block an install on a broken probe.
         echo "wrasse-installer-preflight: cannot read MemTotal, continuing" >&2
+    fi
+    if ! wait_for_route; then
+        show_message "$(offline_message)" info
     fi
     exec "$@"
 }

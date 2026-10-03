@@ -36,6 +36,7 @@ command line: press `e` on the boot menu entry, add it at the end of the `linux`
 3. The installer autostarts. Its welcome page states the requirements, then the `conn-check` step probes `ghcr.io:443` (then `8.8.8.8:53`)
    and moves on by itself when one answers; with no connection it shows "No Internet Connection!" and a Recheck button, and there is no way
    forward. The installer's Wi-Fi picker is not available from a recipe, so connect from the live GNOME system menu (top right), then Recheck.
+   Before the installer opens, `wrasse-installer-preflight` waits up to 8 seconds for a default route; if there is none it shows a message listing the options (Ethernet cable, phone USB tethering, Wi-Fi from the system menu) and still starts the installer, whose check page stays the gate. Any connection type counts; a machine with no way online cannot install.
    Its image step lists only the release lines (Reimagined / Next / Stable), each already pointing at the
    detected graphics variant (the description says which); `stable` is preselected. A last group, "Use different graphics drivers",
    holds the same lines for the other variant and is the override. It is absent when the other variant exists for no line. A line

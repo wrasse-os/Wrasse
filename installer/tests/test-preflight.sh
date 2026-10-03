@@ -58,9 +58,14 @@ cat > "${work}/installer" <<STUB
 printf '%s' "\$*" > "${work}/installer.out"
 STUB
 chmod +x "${work}/dialog" "${work}/installer"
-run() { # <meminfo> <cmdline> -> exit status of the wrapper
+# Route tables as /proc/net/route prints them: with and without an IPv4 default route (destination 00000000).
+printf 'Iface\tDestination\tGateway\tFlags\n' > "${work}/route-none"
+printf 'Iface\tDestination\tGateway\tFlags\neth0\t00000000\t0102A8C0\t0003\neth0\t0002A8C0\t00000000\t0001\n' > "${work}/route-default"
+printf 'Iface\tDestination\tGateway\tFlags\neth0\t0002A8C0\t00000000\t0001\n' > "${work}/route-local-only"
+run() { # <meminfo> <cmdline> [route file] -> exit status of the wrapper (default: online)
     rm -f "${work}/dialog.out" "${work}/installer.out"
-    WRASSE_MEMINFO="${1}" WRASSE_CMDLINE="${2}" WRASSE_PREFLIGHT_DIALOG="${work}/dialog" \
+    WRASSE_MEMINFO="${1}" WRASSE_CMDLINE="${2}" WRASSE_NETROUTE="${3:-${work}/route-default}" WRASSE_ROUTE_WAIT=0 \
+        WRASSE_PREFLIGHT_DIALOG="${work}/dialog" \
         "${script}" "${work}/installer" --arg "two words" >/dev/null 2>&1
 }
 printf 'quiet\n' > "${work}/plain"
@@ -79,6 +84,26 @@ run "${work}/mbad" "${work}/plain" || fail "unreadable MemTotal must not block"
 [[ -f "${work}/installer.out" ]] || fail "unreadable MemTotal: installer not started"
 
 "${script}" >/dev/null 2>&1 && fail "no command accepted"
+
+# 5b. Network: any default route counts (Ethernet, tethering, Wi-Fi alike); without one the user gets the
+# how-to-connect message and the installer still starts (its own connection page is the gate).
+has_default_route "${work}/route-default" || fail "default route not seen"
+has_default_route "${work}/route-none" && fail "empty route table has no default route"
+has_default_route "${work}/route-local-only" && fail "a local-only route is not a default route"
+has_default_route "${work}/missing" && fail "missing route file accepted"
+msg="$(offline_message)"
+for word in Ethernet "USB tethering" Wi-Fi "5 GB"; do
+    [[ "${msg}" == *"${word}"* ]] || fail "offline message lacks '${word}'"
+done
+[[ "${msg}" == *"cannot install Wrasse"* ]] || fail "offline message does not say a machine with no way online cannot install"
+run "${work}/m16" "${work}/plain" "${work}/route-none" || fail "offline machine must still start the installer"
+[[ -f "${work}/installer.out" && -f "${work}/dialog.out" ]] || fail "offline: installer not started or message not shown"
+grep -q 'Ethernet' "${work}/dialog.out" || fail "offline dialog lacks the how-to"
+run "${work}/m16" "${work}/plain" "${work}/route-local-only" || fail "local-only route must still start the installer"
+[[ -f "${work}/dialog.out" ]] || fail "local-only route: message not shown"
+run "${work}/m4" "${work}/plain" "${work}/route-none" && fail "4 GB offline must still be refused for RAM"
+grep -q 'at least 8 GB' "${work}/dialog.out" || fail "RAM message must win over the network message"
+[[ ! -f "${work}/installer.out" ]] || fail "4 GB offline: installer ran"
 
 # 6. configure-live.d.sh wires both launchers to the wrapper and installs it.
 hook="${root}/installer/iso/variant/wrasse/configure-live.d.sh"
