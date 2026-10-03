@@ -126,6 +126,22 @@ grep -q '^system-status:' /usr/share/ublue-os/just/60-custom.just
 # Sysext safe mode: the drop-in that skips systemd-sysext.service on wrasse.safe=1.
 grep -q '^ConditionKernelCommandLine=!wrasse.safe=1$' /usr/lib/systemd/system/systemd-sysext.service.d/10-wrasse-safe-mode.conf
 
+# DX sysext on demand (`ujust dx`): the downloader needs skopeo and jq, the policy must require the Wrasse key,
+# the selector unit must order before systemd-sysext.service and honour safe mode, and the image must not carry the sysext.
+command -v skopeo >/dev/null
+command -v jq >/dev/null
+test "$(jq -r '.transports.docker."ghcr.io/wrasse-os/wrasse-dx"[0].type' /usr/share/wrasse/dx/policy.json)" = "sigstoreSigned"
+test "$(jq -r '.transports.docker."ghcr.io/wrasse-os/wrasse-dx"[0].keyPath' /usr/share/wrasse/dx/policy.json)" = "/usr/lib/pki/containers/wrasse.pub"
+test "$(jq -r '.default[0].type' /usr/share/wrasse/dx/policy.json)" = "reject"
+grep -q 'use-sigstore-attachments: true' /usr/share/wrasse/dx/registries.d/wrasse-dx.yaml
+test -x /usr/libexec/wrasse-dx
+test -x /usr/libexec/wrasse-dx-select
+grep -q '^Before=.*systemd-sysext.service' /usr/lib/systemd/system/wrasse-dx-select.service
+grep -q '^ConditionKernelCommandLine=!wrasse.safe=1$' /usr/lib/systemd/system/wrasse-dx-select.service
+test ! -e /usr/share/wrasse/sysexts
+grep -q '^IMAGE_ID="[^"]\+"$' /usr/lib/os-release
+grep -q '^IMAGE_VERSION="[^"]\+"$' /usr/lib/os-release
+
 # tuned is the power daemon: tuned-ppd provides the net.hadess.PowerProfiles D-Bus API for GNOME, and conflicts with power-profiles-daemon.
 rpm -q tuned tuned-ppd >/dev/null
 ! rpm -q power-profiles-daemon >/dev/null 2>&1

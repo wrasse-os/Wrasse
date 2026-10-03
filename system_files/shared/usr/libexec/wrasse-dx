@@ -1,16 +1,25 @@
 #!/usr/bin/bash
-# Root helper behind `ujust dx on|off`. Run through pkexec (or sudo); the target user
+# Root helper behind `ujust dx on|off|update|status`. Run through pkexec (or sudo); the target user
 # is taken from PKEXEC_UID / SUDO_UID, never from an argument.
 #
-# The sysext is baked into the image at /usr/share/wrasse/sysexts/wrasse-dx.raw, a path
-# systemd-sysext does not scan. "on" links it into /etc/extensions and merges it.
-# bootc replaces the .raw with each image update, so rollback rolls DX back with it.
+# The DX sysext is not part of the image. It is a cosign-signed OCI artifact on ghcr.io/wrasse-os/wrasse-dx,
+# tagged <IMAGE_ID>-<IMAGE_VERSION> after the image it was built from. "on" and "update" download the one
+# matching the booted image with skopeo, which enforces /usr/share/wrasse/dx/policy.json (signature by
+# /usr/lib/pki/containers/wrasse.pub required) and keep it in /var/lib/wrasse/sysexts/<key>/.
+# wrasse-dx-select.service (enabled while DX is on) links only that file into /var/lib/extensions before
+# systemd-sysext.service runs. An image update therefore turns DX off until `ujust dx update` fetches the
+# new match, and a rollback finds the old file again.
 
 set -euo pipefail
 
 SYSEXT_NAME="wrasse-dx"
-SYSEXT_SRC="/usr/share/wrasse/sysexts/${SYSEXT_NAME}.raw"
-SYSEXT_LINK="/etc/extensions/${SYSEXT_NAME}.raw"
+DX_REPO="ghcr.io/wrasse-os/wrasse-dx"
+CACHE_ROOT="/var/lib/wrasse/sysexts"
+SYSEXT_LINK="/var/lib/extensions/${SYSEXT_NAME}.raw"
+SELECT="/usr/libexec/wrasse-dx-select"
+SELECT_UNIT="wrasse-dx-select.service"
+POLICY="/usr/share/wrasse/dx/policy.json"
+REGISTRIES_D="/usr/share/wrasse/dx/registries.d"
 USER_GROUPS=(docker libvirt)
 # Docker and libvirt socket activation; services start on first use.
 UNITS=(docker.socket podman.socket virtqemud.socket virtnetworkd.socket virtstoraged.socket virtnodedevd.socket virtlogd.socket virtlockd.socket wrasse-dx-libvirt-relabel.service)
@@ -29,25 +38,117 @@ is_merged() {
     systemd-sysext status 2>/dev/null | grep -qw "${SYSEXT_NAME}"
 }
 
-dx_on() {
-    need_root
-    local user
-    user="$(target_user)"
-    [[ -f "${SYSEXT_SRC}" ]] || die "${SYSEXT_SRC} is missing from this image"
+is_on() {
+    systemctl is-enabled --quiet "${SELECT_UNIT}" 2>/dev/null
+}
 
-    mkdir -p /etc/extensions
-    ln -sfn "${SYSEXT_SRC}" "${SYSEXT_LINK}"
-    systemd-sysext refresh
+# Downloads and verifies, into the scratch dir $2, the artifact for cache key $1 (<image-id>-<image-version>).
+# Returns 1 with a message instead of exiting, so callers can treat a failure as non-fatal.
+download_into() {
+    local key="$1" tmp="$2" manifest raw_digest rel_digest
+
+    echo "Downloading ${DX_REPO}:${key} (about 1.4 GB; needs network) ..."
+    if ! skopeo --policy "${POLICY}" --registries.d "${REGISTRIES_D}" \
+        copy --retry-times 3 "docker://${DX_REPO}:${key}" "dir:${tmp}/art"; then
+        echo "wrasse-dx: could not download or verify ${DX_REPO}:${key}. DX needs network for the first 'on' and after every image update, and the artifact must exist and be signed by the Wrasse key." >&2
+        return 1
+    fi
+
+    # The signature covers the manifest, so its annotations are trustworthy: refuse an artifact built for another image.
+    manifest="${tmp}/art/manifest.json"
+    if [[ "$(jq -r '.annotations["io.wrasse.dx.image-id"] // ""' "${manifest}")-$(jq -r '.annotations["io.wrasse.dx.image-version"] // ""' "${manifest}")" != "${key}" ]]; then
+        echo "wrasse-dx: the artifact's annotations do not name ${key}; refusing it" >&2
+        return 1
+    fi
+    raw_digest="$(jq -r --arg n "${SYSEXT_NAME}.raw" '[.layers[] | select(.annotations["org.opencontainers.image.title"] == $n) | .digest][0] // ""' "${manifest}")"
+    rel_digest="$(jq -r --arg n "${SYSEXT_NAME}.extension-release" '[.layers[] | select(.annotations["org.opencontainers.image.title"] == $n) | .digest][0] // ""' "${manifest}")"
+    if [[ ! "${raw_digest}" =~ ^sha256:[0-9a-f]{64}$ || ! "${rel_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+        echo "wrasse-dx: the artifact has no ${SYSEXT_NAME}.raw and ${SYSEXT_NAME}.extension-release" >&2
+        return 1
+    fi
+
+    mkdir "${tmp}/out"
+    mv "${tmp}/art/${raw_digest#sha256:}" "${tmp}/out/${SYSEXT_NAME}.raw"
+    mv "${tmp}/art/${rel_digest#sha256:}" "${tmp}/out/${SYSEXT_NAME}.extension-release"
+    chmod 0644 "${tmp}/out/${SYSEXT_NAME}.raw" "${tmp}/out/${SYSEXT_NAME}.extension-release"
+}
+
+# Makes sure the verified sysext for cache key $1 is in the cache. Returns 1 on failure.
+fetch_match() {
+    local key="$1" dest="${CACHE_ROOT}/$1" tmp status=0
+    if [[ ! "${key}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        echo "wrasse-dx: refusing odd image key '${key}'" >&2
+        return 1
+    fi
+    if [[ -s "${dest}/${SYSEXT_NAME}.raw" ]]; then
+        echo "DX sysext for ${key} is already downloaded."
+        return 0
+    fi
+
+    mkdir -p "${CACHE_ROOT}"
+    tmp="$(mktemp -d "${CACHE_ROOT}/.fetch.XXXXXX")"
+    if download_into "${key}" "${tmp}"; then
+        rm -rf "${dest}"
+        mv -T "${tmp}/out" "${dest}"
+        echo "DX sysext for ${key} is downloaded and verified."
+    else
+        status=1
+    fi
+    rm -rf "${tmp}"
+    return "${status}"
+}
+
+# "<image-id>-<version>" for the booted, staged and rollback deployments, from bootc. Fails if bootc cannot say.
+bootc_keys() {
+    bootc status --json | jq -er '
+        .status | [.booted, .staged, .rollback][] | select(. != null) | .image | select(. != null)
+        | select(.version != null)
+        | "\(.image.image | split("/")[-1] | split(":")[0] | split("@")[0])-\(.version)"'
+}
+
+# Deletes cached sysexts of images that are neither booted, staged nor the rollback target.
+prune_cache() {
+    local keep dir
+    if ! keep="$(bootc_keys)"; then
+        echo "wrasse-dx: bootc status failed, not pruning the cache" >&2
+        return 0
+    fi
+    keep+=$'\n'"$("${SELECT}" key)"
+    [[ -d "${CACHE_ROOT}" ]] || return 0
+    for dir in "${CACHE_ROOT}"/*/; do
+        [[ -d "${dir}" ]] || continue
+        dir="${dir%/}"
+        if ! grep -qxF "$(basename "${dir}")" <<<"${keep}"; then
+            echo "Removing cached DX sysext $(basename "${dir}")"
+            rm -rf "${dir}"
+        fi
+    done
+}
+
+# Units, users, tmpfiles and sysctl that the merged sysext brings. Idempotent.
+activate() {
     systemctl daemon-reload
-    is_merged || die "sysext did not merge; see 'systemd-sysext status' and 'journalctl -b -u systemd-sysext'"
-
     # Groups and users that the sysext's sysusers.d files define, state dirs from tmpfiles.d,
     # then sysctl and module-load drop-ins that arrived with the merge.
     systemd-sysusers
     systemd-tmpfiles --create
     systemctl restart systemd-sysctl.service systemd-modules-load.service || true
-
     systemctl enable --now "${UNITS[@]}"
+}
+
+dx_on() {
+    need_root
+    local user key
+    user="$(target_user)"
+    key="$("${SELECT}" key)" || die "cannot tell which image is booted (no IMAGE_ID/IMAGE_VERSION in os-release)"
+
+    fetch_match "${key}" || exit 1
+
+    systemctl enable "${SELECT_UNIT}"
+    "${SELECT}" select
+    systemd-sysext refresh
+    is_merged || die "sysext did not merge; see 'systemd-sysext status' and 'journalctl -b -u systemd-sysext'"
+    activate
 
     local group
     for group in "${USER_GROUPS[@]}"; do
@@ -60,13 +161,38 @@ dx_on() {
     echo "DX is on for ${user}. Log out and back in for group changes to apply."
 }
 
+dx_update() {
+    need_root
+    local key staged_key
+    key="$("${SELECT}" key)" || die "cannot tell which image is booted (no IMAGE_ID/IMAGE_VERSION in os-release)"
+
+    fetch_match "${key}" || exit 1
+    # An update that is staged (downloaded, not yet booted) gets its sysext now, so DX survives the reboot.
+    if staged_key="$(bootc status --json 2>/dev/null | jq -er '.status.staged.image | select(. != null) | "\(.image.image | split("/")[-1] | split(":")[0] | split("@")[0])-\(.version)"')" \
+        && [[ "${staged_key}" != "${key}" ]]; then
+        fetch_match "${staged_key}" || echo "wrasse-dx: could not fetch the sysext for the staged image ${staged_key}; run 'ujust dx update' after rebooting" >&2
+    fi
+    prune_cache
+
+    if is_on; then
+        "${SELECT}" select
+        systemd-sysext refresh
+        is_merged || die "sysext did not merge; see 'systemd-sysext status' and 'journalctl -b -u systemd-sysext'"
+        activate
+        echo "DX is on and matches the booted image."
+    else
+        echo "DX is off; run 'ujust dx on' to use it."
+    fi
+}
+
 dx_off() {
     need_root
-    local user
+    local user purge="${1:-}"
     user="$(target_user)"
 
     # Stop and disable first: unmerging removes the unit files and would leave dangling links.
     systemctl disable --now "${UNITS[@]}" docker.service 2>/dev/null || true
+    systemctl disable "${SELECT_UNIT}" 2>/dev/null || true
 
     local group
     for group in "${USER_GROUPS[@]}"; do
@@ -78,14 +204,23 @@ dx_off() {
     rm -f "${SYSEXT_LINK}"
     if ! systemd-sysext refresh; then
         echo "wrasse-dx: could not unmerge, something under /usr is still in use (VS Code, a container?)." >&2
-        echo "wrasse-dx: the link is removed, so DX stays off after a reboot." >&2
+        echo "wrasse-dx: the link is removed and the selector is disabled, so DX stays off after a reboot." >&2
         exit 1
     fi
     systemctl daemon-reload
+    if [[ "${purge}" == "--purge" ]]; then
+        rm -rf "${CACHE_ROOT}"
+        echo "Deleted the downloaded DX sysexts."
+    fi
     echo "DX is off. /var/lib/docker, /var/lib/libvirt and your VM images were left alone."
 }
 
 dx_status() {
+    local key
+    key="$("${SELECT}" key 2>/dev/null)" || key="unknown"
+    echo "image:  ${key}"
+    if is_on; then echo "enabled: yes"; else echo "enabled: no"; fi
+    if [[ -s "${CACHE_ROOT}/${key}/${SYSEXT_NAME}.raw" ]]; then echo "cached: yes (${CACHE_ROOT}/${key})"; else echo "cached: no (run 'ujust dx update')"; fi
     if [[ -L "${SYSEXT_LINK}" ]]; then echo "link:   ${SYSEXT_LINK} -> $(readlink "${SYSEXT_LINK}")"; else echo "link:   none"; fi
     if is_merged; then echo "merged: yes"; else echo "merged: no"; fi
     systemd-sysext status 2>/dev/null || true
@@ -93,7 +228,8 @@ dx_status() {
 
 case "${1:-}" in
     on) dx_on ;;
-    off) dx_off ;;
+    off) dx_off "${2:-}" ;;
+    update) dx_update ;;
     status) dx_status ;;
-    *) die "usage: wrasse-dx on|off|status" ;;
+    *) die "usage: wrasse-dx on|off [--purge]|update|status" ;;
 esac

@@ -1,0 +1,58 @@
+#!/usr/bin/bash
+# Makes the cached DX sysext that matches the booted image visible to systemd-sysext.
+#
+#   wrasse-dx-select [select]   link the matching cached file into /var/lib/extensions, or drop a stale link
+#   wrasse-dx-select key        print the cache key of the booted image (<IMAGE_ID>-<IMAGE_VERSION>)
+#
+# Runs from wrasse-dx-select.service (enabled only while DX is on) before systemd-sysext.service, and from
+# /usr/libexec/wrasse-dx. Only the file for exactly this image is ever linked: after an image update (or a
+# rollback to an image whose file was pruned) nothing merges until `ujust dx update` fetches the match.
+
+set -euo pipefail
+
+CACHE_ROOT="/var/lib/wrasse/sysexts"
+LINK="/var/lib/extensions/wrasse-dx.raw"
+
+# IMAGE_ID and IMAGE_VERSION are written into os-release by build_files/base/00-image-info.sh, so they are
+# readable offline. Both are checked: they end up in a path.
+image_key() {
+    local id version
+    # shellcheck disable=SC1091
+    id="$(. /usr/lib/os-release && printf '%s' "${IMAGE_ID:-}")"
+    # shellcheck disable=SC1091
+    version="$(. /usr/lib/os-release && printf '%s' "${IMAGE_VERSION:-}")"
+    [[ "${id}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && "${version}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 1
+    printf '%s-%s\n' "${id}" "${version}"
+}
+
+drop_link() {
+    if [[ -L "${LINK}" ]]; then
+        rm -f "${LINK}"
+    fi
+}
+
+case "${1:-select}" in
+    key)
+        image_key || { echo "wrasse-dx-select: os-release has no usable IMAGE_ID and IMAGE_VERSION" >&2; exit 1; }
+        ;;
+    select)
+        if ! key="$(image_key)"; then
+            echo "wrasse-dx-select: os-release has no usable IMAGE_ID and IMAGE_VERSION; DX stays off" >&2
+            drop_link
+            exit 0
+        fi
+        raw="${CACHE_ROOT}/${key}/wrasse-dx.raw"
+        if [[ -s "${raw}" ]]; then
+            mkdir -p /var/lib/extensions
+            ln -sfn "${raw}" "${LINK}"
+            echo "wrasse-dx-select: linked ${raw}"
+        else
+            drop_link
+            echo "wrasse-dx-select: no cached DX sysext for ${key}; DX stays off until 'ujust dx update'" >&2
+        fi
+        ;;
+    *)
+        echo "usage: wrasse-dx-select [select|key]" >&2
+        exit 2
+        ;;
+esac

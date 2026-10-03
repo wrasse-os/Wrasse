@@ -30,24 +30,36 @@ gradia-extension action="status":
             ;;
     esac
 
-# Turn the developer tools sysext (Docker, libvirt, VS Code, perf, GNOME dev) on or off
+# Developer tools sysext (Docker, libvirt, VS Code, perf, GNOME dev), downloaded on demand: on|off [purge]|update|status
 [group('System')]
-dx action="status":
+dx action="status" option="":
     #!/usr/bin/bash
     set -euo pipefail
 
     case "{{ action }}" in
         on)
+            # Downloads the sysext that matches the booted image (needs network, about 1.4 GB), then merges it.
             pkexec /usr/libexec/wrasse-dx on
             ;;
         off)
-            pkexec /usr/libexec/wrasse-dx off
+            case "{{ option }}" in
+                "") pkexec /usr/libexec/wrasse-dx off ;;
+                purge) pkexec /usr/libexec/wrasse-dx off --purge ;;
+                *)
+                    echo "Usage: ujust dx off [purge]" >&2
+                    exit 2
+                    ;;
+            esac
+            ;;
+        update)
+            # After an image update: fetch the sysext for the booted (and any staged) image and re-merge it.
+            pkexec /usr/libexec/wrasse-dx update
             ;;
         status)
             /usr/libexec/wrasse-dx status
             ;;
         *)
-            echo "Usage: ujust dx on|off|status" >&2
+            echo "Usage: ujust dx on|off [purge]|update|status" >&2
             exit 2
             ;;
     esac
@@ -113,7 +125,8 @@ rollback:
     echo
     echo "This makes the rollback deployment above the one that boots next, and the current one becomes the rollback."
     echo "- A staged (downloaded but not yet booted) update is discarded."
-    echo "- The DX sysext (wrasse-dx.raw) is part of the image, so it rolls back with it."
+    echo "- DX follows the image: it merges only the sysext that matches the booted image, so after the rollback it uses the one"
+    echo "  downloaded earlier for that image if it is still cached; otherwise run: ujust dx update"
     echo "- /etc goes back to the previous deployment's state; edits made to /etc since then are not carried over."
     echo "- Automatic updates may move you forward again; see: ujust toggle-updates"
     echo

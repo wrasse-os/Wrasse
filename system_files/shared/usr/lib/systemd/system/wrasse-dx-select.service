@@ -1,0 +1,18 @@
+[Unit]
+Description=Select the DX sysext that matches the booted image
+Documentation=file:///usr/share/wrasse/AGENTS.md
+DefaultDependencies=no
+After=local-fs.target
+Before=systemd-sysext.service sysinit.target shutdown.target
+Conflicts=shutdown.target
+# Same switch as the sysext unit's own safe-mode drop-in: with wrasse.safe=1 nothing is linked or merged.
+ConditionKernelCommandLine=!wrasse.safe=1
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/wrasse-dx-select select
+
+# Not enabled by default: `ujust dx on` enables it and `ujust dx off` disables it.
+[Install]
+WantedBy=sysinit.target
