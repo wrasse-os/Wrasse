@@ -17,6 +17,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 6 | `wrasse install` (Rust CLI) | partial: implemented and unit tested, Flatpak-vs-brew policy blocked on pending decision 1 (see "Phase 6 status notes") |
 | 7 | Installer + ISO | partial: implemented, no ISO built or booted; needs a CI run and a VM/hardware install (see "Phase 7 status notes") |
 | 8 | Docs | done (see "Phase 8 status notes"; some content is blocked on pending decisions) |
+| 9 | composefs-native (bootc composefs backend, no ostree) | todo: direction decided 2026-10-03, research and staged plan in `docs/COMPOSEFS-NATIVE.md`; only Stage 0 (installer uses composefs + systemd-boot) is in the tree and it is unproven |
 
 ## Decisions made
 
@@ -339,3 +340,20 @@ Findings:
 *blocked (pending decision 2):* docs say Claude Code ships in every image; update if gated behind `ujust dx on`.
 *blocked (pending decisions 3 and 4):* `docs/INSTALL.md` says the `reimagined` NVIDIA image and its status as the feature-first line are open.
 *blocked (`brand:`):* README, INSTALL and UJUST keep Bluefin names where unrenamed and must be revisited when `brand:` runs.
+
+## Phase 9: composefs-native
+
+Direction (maintainer decision, 2026-10-03): adopt bootc's composefs backend and drop ostree (no `ostree-prepare-root`, no ostree repo or deployments, no `rpm-ostree`).
+Full feasibility assessment, file-by-file impact, ranked risks, staged plan and a VM checklist: **`docs/COMPOSEFS-NATIVE.md`**. Status: `todo`.
+
+Summary of the findings (all sourced in that document):
+- The composefs backend is **experimental** in bootc 1.16.x (1.16.13 is in Fedora 44); a working precedent builds sealed Silverblue from the official ostree Silverblue image (`travier/fedora-atomic-desktops-sealed`).
+- No ostree to composefs migration exists; every install must be redone. `bootc` itself still links libostree.
+- No Fedora-signed systemd-boot or UKI exists (F44 ships `systemd-boot-unsigned`); Wrasse must sign both and users must enroll a Wrasse MOK in addition to the ublue akmods key.
+- A sealed UKI freezes the kernel command line: `wrasse.safe=1` at the boot menu cannot work with Secure Boot on (systemd-stub ignores cmdline overrides). Replacement candidates in section 5.3.
+- No boot counting for composefs.
+
+Stages (each stops for the user): 0 installer uses composefs + systemd-boot (landed, unproven) / 1 experimental `composefs` image line, unsealed / 2 ujust, CLI, uupd audit / 3 UKI in a VM, Secure Boot off / 4 signing and MOK / 5 installer and ISO scratch disk / 6 safe-mode replacement and sysext on sealed / 7 promote line by line.
+
+*blocked (pending decisions, to ask the user; see section 9 of the doc):* Secure Boot trust model and key custody; abandoning existing installs (no migration); an experimental `composefs` image line on `ghcr.io/wrasse-os`; safe-mode UX; DX on sealed images.
+First experiment (no rebuild): composefs install of the current image in the virt-manager VM, UEFI, Secure Boot off (doc section 8, E1).
