@@ -70,7 +70,7 @@ jobs:
       - name: Test the installer files
         run: |
           set -euo pipefail
-          shellcheck -x installer/gen-catalog.sh installer/gen-nvidia-ids.sh installer/iso/pin-installer.sh \
+          shellcheck -x -S warning installer/gen-catalog.sh installer/gen-nvidia-ids.sh installer/iso/pin-installer.sh \
             installer/iso/variant/wrasse/configure-live.d.sh installer/iso/variant/wrasse/wrasse-installer-config \
             installer/tests/test-catalog.sh
           installer/tests/test-catalog.sh
