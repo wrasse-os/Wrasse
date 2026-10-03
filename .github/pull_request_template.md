@@ -1,7 +1,7 @@
 <!--
 
-## Thank you for contributing to the Universal Blue project!
+## Thank you for contributing to Wrasse!
 
-Please [read the Contributor's Guide](https://docs.projectbluefin.io/contributing) before submitting a pull request.
+Please read [CONTRIBUTING.md](../CONTRIBUTING.md) and `CLAUDE.md` (commit prefixes, one concern per commit, `DIVERGENCE.md` entries) before submitting a pull request.
 
 -->

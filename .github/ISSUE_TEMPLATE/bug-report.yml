@@ -1,12 +1,10 @@
 name: Bug Report
-description: Report an issue about using Bluefin
+description: Report an issue about using Wrasse
 body:
   - type: markdown
     attributes:
       value: |
         Thank you for taking the time to fill out this bug report! (She bites sometimes)
-
-        Check out the [Project Opportunities](https://github.com/ublue-os/bluefin/discussions/3423) to see if there's a place you can help out!
   - type: textarea
     id: describe-bug
     attributes:

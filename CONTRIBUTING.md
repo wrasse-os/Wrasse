@@ -2,6 +2,8 @@
 
 Thanks for helping out!
 
-Check the [Contributing Guide](https://docs.projectbluefin.io/contributing) for contribution information.
+Wrasse is a monorepo: the image build, the vendored common system files, the installer and the `wrasse` CLI all live here.
+Read `CLAUDE.md` for the working rules (commit prefixes, one concern per commit, `DIVERGENCE.md` entry for every change from
+upstream) and `docs/SPEC.md` for the phases.
 
-This repository is for building the images, you are probably looking for [@projectbluefin/common](https://github.com/projectbluefin/common) to change something in Bluefin. Make sure you check [the architecture diagram](https://docs.projectbluefin.io/contributing#understanding-bluefins-architecture).
+Report bugs and ask questions at <https://github.com/wrasse-os/Wrasse/issues>.

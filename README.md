@@ -4,9 +4,9 @@ Wrasse is a hard fork of Universal Blue's [Bluefin](https://github.com/ublue-os/
 GNOME desktop built as a Fedora bootc image. Images are published to `ghcr.io/wrasse-os/wrasse` and
 `ghcr.io/wrasse-os/wrasse-nvidia`. Source: `github.com/wrasse-os/Wrasse`.
 
-> **Branding.** The rename from Bluefin to Wrasse (`brand:`) has not happened yet. The OS still identifies itself as
-> Bluefin in os-release, MOTD, ujust text and some UI. Image names, release lines and the files named `wrasse-*` are already
-> Wrasse. This README describes the tree as it is, not as it will be.
+> **Forked from Bluefin.** Wrasse is a hard fork of [Bluefin](https://github.com/ublue-os/bluefin) by Universal Blue and its
+> contributors; their work and licenses are kept. The OS, images, MOTD, ujust text and links say Wrasse. Some artwork (logos,
+> wallpapers, Bazaar banners, avatars) is still Bluefin's until Wrasse art exists; see `docs/BRANDING-HITS.md`.
 
 ## What is different from Bluefin
 

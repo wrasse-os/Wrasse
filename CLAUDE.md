@@ -21,5 +21,5 @@ their status. "Continue with the next phase" means: next `todo` phase in `docs/S
 - Shell commands for the user to run: fish syntax. Build scripts: bash. New CLI tooling: Rust. No OOP-heavy abstractions.
 - Items under "Pending decisions" in `docs/SPEC.md`: stop and ask the user. Do not pick for them. When running without the
   user, mark the dependent work `blocked` and implement everything that does not depend on the decision.
-- Do not rename Bluefin branding yet (`brand:` is deferred). Do not rename real ublue-os plumbing (akmods, brew, base
-  images, COPRs, akmods signing keys).
+- Bluefin branding is renamed to Wrasse (`brand:`, see `docs/BRANDING-HITS.md`). Do not rename real ublue-os and
+  projectbluefin plumbing (akmods, brew, base images, COPRs, akmods signing keys, ChairLift ids, upstream source repos).
