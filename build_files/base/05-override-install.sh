@@ -10,11 +10,6 @@ rm -rf /usr/share/doc
 # Remove kernel-devel from rpmdb because all package files are removed from /usr/src
 rpm --erase --nodeps kernel-devel
 
-mkdir -p /usr/share/doc/bluefin
-# Offline Bluefin documentation
-ghcurl "https://github.com/ublue-os/bluefin-docs/releases/download/0.1/bluefin.pdf" --retry 3 -o /tmp/bluefin.pdf
-install -Dm0644 -t /usr/share/doc/bluefin/ /tmp/bluefin.pdf
-
 # Automatic wallpaper changing by month
 HARDCODED_RPM_MONTH="12"
 sed -i "/picture-uri/ s/${HARDCODED_RPM_MONTH}/$(date +%m)/" "/usr/share/glib-2.0/schemas/zz0-wrasse-modifications.gschema.override"

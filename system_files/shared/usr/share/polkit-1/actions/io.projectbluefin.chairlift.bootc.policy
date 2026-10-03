@@ -4,8 +4,8 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 
 <policyconfig>
-  <vendor>Project Bluefin</vendor>
-  <vendor_url>https://github.com/projectbluefin/chairlift</vendor_url>
+  <vendor>Wrasse</vendor>
+  <vendor_url>https://github.com/wrasse-os/Wrasse</vendor_url>
   <icon_name>io.projectbluefin.chairlift</icon_name>
 
   <action id="io.projectbluefin.chairlift.bootc.stage">

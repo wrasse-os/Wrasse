@@ -2,12 +2,8 @@
 Type=Application
 NoDisplay=false
 Terminal=false
-Exec=xdg-open https://github.com/ublue-os/bluefin/discussions
+Exec=xdg-open https://github.com/wrasse-os/Wrasse/issues
 Icon=ublue-discourse
-Name=Community
-Name[cs]=Komunita
-Name[fr]=Communauté
-Comment=Bluefin Discussions
-Comment[fr]=Discussions autour de Bluefin
-Comment[cs]=Diskuze o Bluefinu
+Name=Report an Issue
+Comment=Wrasse issue tracker
 Categories=Utility;

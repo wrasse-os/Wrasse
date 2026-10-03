@@ -5,18 +5,18 @@
 #
 # Homebrew's chairlift cask installs this entry and its icons under the
 # *installing* user's ~/.local/share. Homebrew uses one shared prefix on
-# Bluefin, so every user after the first sees the cask as already installed
+# Wrasse, so every user after the first sees the cask as already installed
 # and never receives those artifacts. Shipping them from the image is what
 # makes ChairLift appear for all users; see
 # docs/skills/brew-lifecycle/references/service-mechanics.md.
 Name=Control Center
 GenericName=System Management
-Comment=Update, configure, and maintain your Bluefin system
+Comment=Update, configure, and maintain your Wrasse system
 Exec=/home/linuxbrew/.linuxbrew/bin/chairlift-wrapper
 Icon=io.projectbluefin.chairlift
 Terminal=false
 Type=Application
 Categories=Settings;GTK;
-Keywords=Settings;Control Panel;System Settings;Preferences;Configuration;Control Center;Update;Upgrade;Flatpak;Homebrew;Driver;Developer;Bluefin;ChairLift;
+Keywords=Settings;Control Panel;System Settings;Preferences;Configuration;Control Center;Update;Upgrade;Flatpak;Homebrew;Driver;Developer;Wrasse;ChairLift;
 StartupNotify=true
 NoDisplay=false
