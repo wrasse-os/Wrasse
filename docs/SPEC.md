@@ -22,7 +22,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 ## Decisions made
 
 - Default sleep inhibitor is **Caffeine** (Lidless does not exist yet; it is on the roadmap). Caffeine stays enabled.
-- `brand:` (Bluefin to Wrasse renames) is **deferred** until the user says go.
+- `brand:` (Bluefin to Wrasse renames) is done; see `docs/BRANDING-HITS.md` for what remains (artwork).
 - `projectbluefin/common` is vendored in-tree; there is no `common` image dependency anymore.
 
 ## Pending decisions (stop and ask the user)
@@ -65,7 +65,7 @@ Branch recommendation: origin has only `main`; keep it. Stale upstream release t
 
 Branding (`brand:`): rename Bluefin branding to Wrasse (os-release, image names, labels, ujust text, MOTD, CI image refs).
 Do NOT rename real dependencies on ublue-os infrastructure (akmods, brew, base images, COPRs, akmods signing keys).
-Show branding hits vs plumbing hits before changing anything. **Deferred.**
+Branding hits vs plumbing hits are classified in `docs/BRANDING-HITS.md`. **Done**; real Wrasse artwork is still needed.
 
 Done: vanilla GNOME layout; extensions (enabled: Bazaar companion, Caffeine, AppIndicator, Blur My Shell; removed: Dash to Dock,
 Logo Menu, Custom Command Menu, Search Light, GSConnect, Gradia; QSAP and Tiling Shell were never present); default Flatpaks;
