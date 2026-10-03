@@ -83,6 +83,7 @@ FEDORA_PACKAGES=(
     socat
     sssd-nfs-idmap
     switcheroo-control
+    systemd-boot-unsigned
     tmux
     tuned
     tuned-ppd

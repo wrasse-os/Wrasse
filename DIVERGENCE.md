@@ -221,3 +221,4 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **Live ISO dock**: pin `org.bootcinstaller.Installer.desktop` (the id the running window matches) instead of `dakota-installer.desktop`, which showed two installer icons; live favorites are now Installer, Files, Ptyxis.
 
 - **Installer launcher naming**: the live ISO launcher is "Install Wrasse" (generic bootc installer); the Dakota-named launcher is removed and the build fails if Dakota branding is left in the installer launchers. The `DAKOTA_LIVE` volume label is hardcoded upstream and unchanged.
+- **systemd-boot-unsigned in the image**: bootc's composefs backend installs systemd-boot from the image, so new installs can use it.
