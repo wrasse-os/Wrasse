@@ -175,3 +175,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **Build pull retries**: `podman build --retry 5 --retry-delay 15s` after a quay.io CDN blob dropped mid-pull (unexpected EOF) failed the next/nvidia cell. The cell passed on re-run; the retry is hardening.
 
 - **Rollback and status UX**: added `ujust rollback` and `ujust system-status` (`60-custom.just`) and `wrasse status` / `wrasse rollback` (`cli/`), thin wrappers over `bootc status` and `bootc rollback` through `pkexec` (bootc needs root). Why: a rollback path that is one command, shows what will change and states the DX sysext and `/etc` consequences, instead of expecting users to know bootc.
+
+- **Sysext safe mode**: `systemd-sysext.service.d/10-wrasse-safe-mode.conf` skips the unit when `wrasse.safe=1` is on the kernel command line; `docs/SAFE-MODE.md` says how to add it once at GRUB. Why: a broken DX sysext must not strand a user; a one-shot kernel argument is the smallest mechanism and leaves `ujust dx off` as the persistent fix.

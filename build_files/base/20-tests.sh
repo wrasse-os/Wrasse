@@ -96,6 +96,9 @@ grep -q '^ManagedOOMMemoryPressure=kill$' /usr/lib/systemd/user/wrasse-agents.sl
 grep -q '^rollback:' /usr/share/ublue-os/just/60-custom.just
 grep -q '^system-status:' /usr/share/ublue-os/just/60-custom.just
 
+# Sysext safe mode: the drop-in that skips systemd-sysext.service on wrasse.safe=1.
+grep -q '^ConditionKernelCommandLine=!wrasse.safe=1$' /usr/lib/systemd/system/systemd-sysext.service.d/10-wrasse-safe-mode.conf
+
 IMPORTANT_UNITS=(
     rpm-ostree-countme.timer
     systemd-oomd.service

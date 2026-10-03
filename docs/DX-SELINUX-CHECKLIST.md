@@ -6,6 +6,8 @@ check for you on a booted Wrasse image with SELinux **enforcing** (`getenforce` 
 Keep a second terminal on `journalctl -f` and a third on `sudo ausearch -m avc -ts recent` (or `sudo journalctl -t setroubleshoot`)
 as you go. Any AVC denial is a finding: note the `scontext`, `tcontext`, `tclass` and the path.
 
+If DX breaks boot, see `docs/SAFE-MODE.md` (`wrasse.safe=1` at the GRUB menu).
+
 ## Known risks (why this list exists)
 
 - The `.raw` is labelled at build time from the image's `file_contexts` (`mkfs.erofs --file-contexts`), not by a running kernel.
