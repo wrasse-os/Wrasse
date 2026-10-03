@@ -1,0 +1,12 @@
+# Layers the mkosi-built DX sysext into the finished image (DX_BUILDER=mkosi).
+# Context: the out dir of build-sysext-mkosi.sh (wrasse-dx.raw, wrasse-dx.extension-release, test-sysext.sh).
+#   podman build --build-arg BASE=localhost/<image>:<tag> -f Containerfile.mkosi-layer --tag localhost/<image>:<tag> <out-dir>
+ARG BASE
+FROM ${BASE}
+
+COPY wrasse-dx.raw wrasse-dx.extension-release /usr/share/wrasse/sysexts/
+
+RUN --mount=type=bind,source=test-sysext.sh,target=/tmp/test-sysext.sh \
+    /tmp/test-sysext.sh
+
+RUN bootc container lint

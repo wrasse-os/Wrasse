@@ -197,3 +197,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **ISO workflow**: run shellcheck at warning level; info-level SC1091 ("not following pin.env") failed the first ISO run.
 
 - **DX sysext package list in `packages.txt`**: `build_files/dx/packages.txt` is now the one list of DX packages, read by `build-sysext.sh` (previously an inline array). Why: the mkosi builder (added next) must install exactly the same packages; one file avoids two lists drifting. No change to what the script builds.
+
+- **mkosi DX sysext builder (alternative)**: `build_files/dx/build-sysext-mkosi.sh`, `build_files/dx/mkosi/` and `build_files/dx/Containerfile.mkosi-layer` build `wrasse-dx.raw` with mkosi (`Format=sysext`, `Overlay=yes`, base tree = the finished image) from the shared `packages.txt` and `files/`; `test-sysext.sh` accepts a GPT image as well as bare erofs and skips while a mkosi sysext is yet to be layered in. Why: the user asked to try mkosi; it is an alternative, the script stays the default until CI proves it. Not run anywhere yet.
