@@ -95,4 +95,14 @@ jq -e '.steps | keys_unsorted | .[0:2] == ["welcome", "conn_check"] and index("i
 jq -e '.steps.conn_check.template == "conn-check"' "${root}/installer/iso/variant/wrasse/recipe.json" >/dev/null || fail "conn_check template name"
 jq -e 'has("local_imgref") | not' "${root}/installer/iso/variant/wrasse/recipe.json" >/dev/null || fail "local_imgref would make the installer treat this as an offline install and skip conn-check"
 
+# 8. Download wording: every image description says it is a download of about 5 GB, the branding file carries the
+# welcome and confirm text (the confirm page is always shown by the installer), and the hook installs it.
+for flavor in wrasse wrasse-nvidia; do
+    jq -e '[.. | objects | select(has("imgref")) | .desc | endswith("Network install: downloads about 5 GB.")] | all' "${work}/c-${flavor}.json" >/dev/null || fail "${flavor}: desc lacks the download note"
+done
+branding="${root}/installer/iso/variant/wrasse/branding.json"
+jq -e '.name == "Wrasse" and (.copy.confirm_body | contains("5 GB") and contains("{name}")) and (.copy.welcome_install_subtitle | contains("8 GB") and contains("5 GB"))' "${branding}" >/dev/null || fail "branding.json copy"
+jq -e '.copy | keys - ["welcome_title","welcome_subtitle","welcome_install","welcome_install_subtitle","welcome_button","confirm_title","confirm_subtitle","confirm_body","confirm_warning","confirm_button","progress_title","progress_note","recovery_key_title","recovery_key_body","recovery_key_copy","recovery_key_ack","done_title","done_subtitle","done_restart","done_failed_title","store_label"] | length == 0' "${branding}" >/dev/null || fail "branding.json has a copy key the installer ignores"
+grep -q 'install -Dm644 "${here}/branding.json" /etc/bootc-installer/branding.json' "${root}/installer/iso/variant/wrasse/configure-live.d.sh" || fail "hook does not install branding.json"
+
 echo "ok"

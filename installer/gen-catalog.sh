@@ -13,6 +13,8 @@
 # at least one line, a last group "Use different graphics drivers" with the same lines for the
 # other flavor. A line with "nvidia": false has no NVIDIA image: with the nvidia flavor detected its
 # main leaf falls back to the wrasse image and says so.
+# Every description ends with the download note (about 5 GB: the images are 4.4 to 5.0 GB compressed). The installer
+# has no size field, and a size fetched at build time would go stale between ISO and install.
 # "default_image" is the detected flavor's stable leaf.
 #
 # Usage: installer/gen-catalog.sh <wrasse|wrasse-nvidia> [build-matrix.json]
@@ -35,6 +37,7 @@ jq --sort-keys --arg flavor "${flavor}" '
     "next": "Newest Fedora beta.",
     "stable": "Newest Fedora final release."
   }[.] // "";
+  def dl: " Network install: downloads about 5 GB.";
   def ref($img; $l): "ghcr.io/wrasse-os/\($img):\($l)";
   .lines as $lines
   | [ $lines | keys_unsorted[] ] as $all_lines
@@ -54,24 +57,24 @@ jq --sort-keys --arg flavor "${flavor}" '
           children: (
             [ $all_lines[] as $l
               | if $nv and ($lines[$l].nvidia == true) then
-                  { name: ($l | title), desc: "\($l | blurb) NVIDIA graphics driver included.", imgref: ref("wrasse-nvidia"; $l) }
+                  { name: ($l | title), desc: "\($l | blurb) NVIDIA graphics driver included.\(dl)", imgref: ref("wrasse-nvidia"; $l) }
                 elif $nv then
-                  { name: ($l | title), desc: "\($l | blurb) No NVIDIA image for this line yet, installs Mesa graphics (AMD, Intel, other).", imgref: ref("wrasse"; $l) }
+                  { name: ($l | title), desc: "\($l | blurb) No NVIDIA image for this line yet, installs Mesa graphics (AMD, Intel, other).\(dl)", imgref: ref("wrasse"; $l) }
                 else
-                  { name: ($l | title), desc: "\($l | blurb) Mesa graphics (AMD, Intel, other).", imgref: ref("wrasse"; $l) }
+                  { name: ($l | title), desc: "\($l | blurb) Mesa graphics (AMD, Intel, other).\(dl)", imgref: ref("wrasse"; $l) }
                 end ]
             + (
               if $nv then
                 [ {
                     name: "Use different graphics drivers",
                     subtitle: "Only if the detected choice is wrong for your GPU",
-                    children: [ $all_lines[] as $l | { name: "\($l | title) (Mesa)", desc: "\($l | blurb) Mesa graphics (AMD, Intel, other).", imgref: ref("wrasse"; $l) } ]
+                    children: [ $all_lines[] as $l | { name: "\($l | title) (Mesa)", desc: "\($l | blurb) Mesa graphics (AMD, Intel, other).\(dl)", imgref: ref("wrasse"; $l) } ]
                   } ]
               elif ($nvidia_lines | length) > 0 then
                 [ {
                     name: "Use different graphics drivers",
                     subtitle: "Only if the detected choice is wrong for your GPU",
-                    children: [ $nvidia_lines[] as $l | { name: "\($l | title) (NVIDIA)", desc: "\($l | blurb) NVIDIA graphics driver included (GTX 16 series, RTX and newer only).", imgref: ref("wrasse-nvidia"; $l) } ]
+                    children: [ $nvidia_lines[] as $l | { name: "\($l | title) (NVIDIA)", desc: "\($l | blurb) NVIDIA graphics driver included (GTX 16 series, RTX and newer only).\(dl)", imgref: ref("wrasse-nvidia"; $l) } ]
                   } ]
               else [] end
             )

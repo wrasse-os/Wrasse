@@ -21,6 +21,10 @@ systemctl enable wrasse-installer-config.service
 # plain recipe (with the image step) put back. fisherman pulls the chosen ghcr.io/wrasse-os image.
 rm -f /etc/bootc-installer/live-iso-mode
 install -Dm644 "${here}/recipe.json" /etc/bootc-installer/recipe.json
+# Branding file (the installer reads it from /run/host/etc/bootc-installer inside its Flatpak): the welcome and
+# confirm pages say the install is a download of about 5 GB. Not baked into the recipe because the installer
+# only takes the confirm page text from branding copy.
+install -Dm644 "${here}/branding.json" /etc/bootc-installer/branding.json
 
 # configure-live.sh hardcodes Dakota's name and icon in the launchers. The installer is the generic
 # bootc installer, so name the launcher after what it does and drop the Dakota-named duplicate.

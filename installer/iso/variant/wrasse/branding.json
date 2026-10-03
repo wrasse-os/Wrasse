@@ -1,0 +1,11 @@
+{
+  "name": "Wrasse",
+  "id": "wrasse",
+  "copy": {
+    "welcome_title": "Welcome to {name}",
+    "welcome_subtitle": "An agent-first GNOME workstation on Fedora bootc.",
+    "welcome_install_subtitle": "Installs to your internal disk. Needs 8 GB of RAM, an internet connection and a download of about 5 GB.",
+    "confirm_title": "Confirm installation",
+    "confirm_body": "{name} is downloaded during the install from ghcr.io/wrasse-os: about 5 GB (compressed), so keep the computer plugged in and connected. Check the image below is the one you want."
+  }
+}
