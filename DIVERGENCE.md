@@ -249,3 +249,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **`ujust contribute` removed** (`shared.just`, `docs/UJUST.md`): it ran Bluefin's `ghcr.io/projectbluefin/contribute` worker, connected it to Bluefin's hosted Hive hub (`hosted-projectbluefin-knuckle-*.hive.hivecommons.dev`) and handed it the user's GitHub token. Why: Wrasse must not connect to Bluefin services; the recipe only made sense for Bluefin contributors and was user-initiated, never automatic.
 
 - **`docs/BRANDING-HITS.md` outcome section**: remaining hits, artwork still needing Wrasse versions, and the extra `ujust contribute` removal. Why: keep the classification honest after the renames.
+
+- **fastfetch logo**: Wrasse ASCII logo (`/usr/share/wrasse/fastfetch/logo.txt`, original placeholder art) instead of the distro-ID fallback logo. The OS line already reads the Wrasse `os-release`.
