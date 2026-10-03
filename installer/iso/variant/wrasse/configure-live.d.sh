@@ -20,17 +20,22 @@ systemctl enable wrasse-installer-config.service
 rm -f /etc/bootc-installer/live-iso-mode
 install -Dm644 "${here}/recipe.json" /etc/bootc-installer/recipe.json
 
-# configure-live.sh hardcodes Dakota's name and icon in the launchers.
+# configure-live.sh hardcodes Dakota's name and icon in the launchers. The installer is the generic
+# bootc installer, so name the launcher after what it does and drop the Dakota-named duplicate.
+rm -f /usr/share/applications/dakota-installer.desktop
 for f in /etc/xdg/autostart/tuna-installer.desktop \
-         /usr/share/applications/dakota-installer.desktop \
          /usr/share/applications/org.bootcinstaller.Installer.desktop; do
     [[ -f "${f}" ]] || continue
-    sed -i -e 's/^Name=Dakota Installer/Name=Wrasse Installer/' \
+    sed -i -e 's/^Name=Dakota Installer/Name=Install Wrasse/' \
            -e 's/^Comment=Install Dakota to your computer/Comment=Install Wrasse to your computer/' \
            -e 's/^Icon=dakota$/Icon=org.bootcinstaller.Installer/' "${f}"
+    if grep -qi 'dakota' "${f}"; then
+        echo "leftover Dakota branding in ${f}" >&2
+        exit 1
+    fi
 done
 
-# The tooling pins `dakota-installer.desktop` in the dock, but the running installer window's app id is
+# The tooling pins `dakota-installer.desktop` in the dock (now removed above), but the running installer window's app id is
 # org.bootcinstaller.Installer, which GNOME matches to org.bootcinstaller.Installer.desktop. Two different
 # desktop ids meant two installer icons (one pinned, one running). Pin the id the window really uses, and
 # use Wrasse's own live favorites instead of Firefox and Console.
