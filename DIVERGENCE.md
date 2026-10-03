@@ -215,3 +215,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **Docs for DX on demand**: `docs/DX-SYSEXT.md` (flow, tags, failure semantics, one-time package visibility), `SAFE-MODE.md`, `DX-SELINUX-CHECKLIST.md` (new download, selector, update and offline checks), `INSTALL.md`, `UJUST.md`, `WRASSE-INSTALL.md`, `CI.md`, `CI-SECRETS.md`, `SPEC.md` Phase 3 (decision recorded; "bake in" marked superseded), `README.md` and the agent skill text. Why: the DX sysext is no longer in the image, so every statement that it ships with or rolls back with the image was wrong.
 
 - **`wrasse rollback` note**: the confirmation text said the DX sysext "is part of the image and rolls back with it"; it now says DX follows the image and uses the sysext downloaded for it, else `ujust dx update`. `wrasse install --dx` is unchanged (it still runs `ujust dx on`, which now downloads first). Why: the old sentence became false.
+
+- **Dark mode by default**: `color-scheme='prefer-dark'` in the schema override. Night Light stays at the GNOME default (off); the maintainer's own setting is also off.
