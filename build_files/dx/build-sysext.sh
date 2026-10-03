@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 # Builds /out/wrasse-dx.raw, a systemd-sysext (erofs) with the Wrasse developer tools.
-# Runs in the `dx-build` Containerfile stage, which is `FROM base` (the finished image),
+# Runs in Containerfile.dx, which is `FROM` the finished image (build-dx.sh),
 # so `dnf download --resolve` only fetches what the image does not already ship and the
 # extension-release can be copied from the image's own os-release.
 # Method follows github.com/fedora-sysexts/fedora (sysext.just): download RPMs, extract
@@ -139,8 +139,8 @@ ARCHITECTURE=${sysext_arch}
 EXTENSION_RELOAD_MANAGER=1
 EOT
 
-# Plain-text copy next to the image so the final stage (no erofs tools) can check it
-# against os-release without mounting the sysext.
+# Plain-text copy next to the .raw so test-sysext.sh (no erofs tools needed) can check it
+# against os-release without mounting the sysext; it is published with the .raw.
 cp "usr/lib/extension-release.d/extension-release.${SYSEXT_NAME}" "${OUT_DIR}/${SYSEXT_NAME}.extension-release"
 
 # Label every file from the image's own policy so SELinux sees the right types after merge.
@@ -158,7 +158,7 @@ mkfs.erofs -zlz4 -T "${SOURCE_DATE_EPOCH}" --all-root \
 fsck.erofs "${OUT_DIR}/${SYSEXT_NAME}.raw"
 dump.erofs --path="/usr/lib/extension-release.d/extension-release.${SYSEXT_NAME}" "${OUT_DIR}/${SYSEXT_NAME}.raw"
 
-# Size report, shown in the build log (CI also reports it from the finished image).
+# Size report, shown in the build log (CI also reports it in the job summary).
 stat -c 'wrasse-dx.raw: %s bytes' "${OUT_DIR}/${SYSEXT_NAME}.raw"
 du -sh "${ROOTFS}" | sed 's/^/uncompressed rootfs: /'
 

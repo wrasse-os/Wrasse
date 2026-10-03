@@ -1,25 +1,19 @@
 #!/usr/bin/bash
-# Checks a finished /usr/share/wrasse/sysexts/wrasse-dx.raw against the running image's
-# os-release. Run in the final Containerfile stage after the sysext is copied in.
+# Checks a built wrasse-dx.raw against the os-release of the image it was built from.
+#   test-sysext.sh <out-dir> <image>     (as root; <image> is in root's podman storage)
 
 echo "::group:: ===$(basename "$0")==="
 
 set -euo pipefail
 
-# Nothing to check while the sysext is still to be layered in (DX_BUILDER=mkosi stage `final`).
-if [[ "${DX_BUILDER:-script}" == "mkosi" && ! -e /usr/share/wrasse/sysexts/wrasse-dx.raw ]]; then
-    echo "DX sysext comes from the mkosi layer; skipping"
-    echo "::endgroup::"
-    exit 0
-fi
+OUT_DIR="${1:?usage: test-sysext.sh <out-dir> <image>}"
+IMAGE="${2:?usage: test-sysext.sh <out-dir> <image>}"
 
-RAW="/usr/share/wrasse/sysexts/wrasse-dx.raw"
+RAW="${OUT_DIR}/wrasse-dx.raw"
 [[ -s "${RAW}" ]] || { echo "Missing ${RAW}" >&2; exit 1; }
 
-# The final stage has no erofs tools; the build stage already ran fsck.erofs. Here we only
-# check what the host can see without mounting. The script builder writes a bare erofs
-# image (magic 0xE0F5E1E2 little endian at offset 1024); the mkosi builder writes a GPT
-# disk image with an erofs partition ("EFI PART" at offset 512).
+# The script builder writes a bare erofs image (magic 0xE0F5E1E2 little endian at offset 1024);
+# the mkosi builder writes a GPT disk image with an erofs partition ("EFI PART" at offset 512).
 erofs_magic="$(od -An -tx1 -j1024 -N4 "${RAW}" | tr -d ' \n')"
 gpt_magic="$(dd if="${RAW}" bs=1 skip=512 count=8 status=none)"
 if [[ "${erofs_magic}" != "e2e1f5e0" && "${gpt_magic}" != "EFI PART" ]]; then
@@ -27,15 +21,24 @@ if [[ "${erofs_magic}" != "e2e1f5e0" && "${gpt_magic}" != "EFI PART" ]]; then
     exit 1
 fi
 
-REL="/usr/share/wrasse/sysexts/wrasse-dx.extension-release"
+REL="${OUT_DIR}/wrasse-dx.extension-release"
 [[ -s "${REL}" ]] || { echo "Missing ${REL}" >&2; exit 1; }
 
 # systemd-sysext refuses an extension whose ID or VERSION_ID differs from the host's.
+host_release="$(podman run --rm --entrypoint cat "${IMAGE}" /usr/lib/os-release)"
 for key in ID VERSION_ID; do
-    host="$(. /usr/lib/os-release && printf '%s' "${!key}")"
+    host="$(sed -n "s/^${key}=//p" <<<"${host_release}" | tr -d '"')"
     ext="$(sed -n "s/^${key}=//p" "${REL}" | tr -d '"')"
-    if [[ "${host}" != "${ext}" ]]; then
-        echo "extension-release ${key}=${ext} does not match os-release ${key}=${host}" >&2
+    if [[ -z "${host}" || "${host}" != "${ext}" ]]; then
+        echo "extension-release ${key}=${ext} does not match the image's os-release ${key}=${host}" >&2
+        exit 1
+    fi
+done
+
+# ujust dx on picks the artifact by these two values; the image must carry them.
+for key in IMAGE_ID IMAGE_VERSION; do
+    if ! grep -q "^${key}=\"[^\"]\+\"$" <<<"${host_release}"; then
+        echo "the image's os-release has no ${key}" >&2
         exit 1
     fi
 done

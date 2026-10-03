@@ -1,12 +1,12 @@
 #!/usr/bin/bash
 # Builds wrasse-dx.raw with mkosi (Format=sysext, Overlay=yes) from a finished image.
-# Alternative to build-sysext.sh; selected by DX_BUILDER=mkosi in CI (docs/DX-SYSEXT.md).
+# Alternative to build-sysext.sh; selected by DX_BUILDER=mkosi through build-dx.sh (docs/DX-SYSEXT.md).
 #
 # Usage (as root, on a host with mkosi installed and podman):
 #   build-sysext-mkosi.sh <image> <out-dir>
 # <image> is the finished image (its rootfs is the mkosi base tree, so only files the image
-# does not ship land in the sysext). <out-dir> receives wrasse-dx.raw, wrasse-dx.extension-release,
-# wrasse-dx.manifest.json and test-sysext.sh (for Containerfile.mkosi-layer).
+# does not ship land in the sysext). <out-dir> receives wrasse-dx.raw, wrasse-dx.extension-release and
+# wrasse-dx.manifest.json.
 #
 # mkosi writes ID and VERSION_ID of usr/lib/extension-release.d/extension-release.wrasse-dx
 # from the base tree's os-release, which is what systemd-sysext matches against the host.
@@ -67,7 +67,7 @@ mkosi --directory "${conf}" \
 raw="${OUT_DIR}/${SYSEXT_NAME}.raw"
 [[ -s "${raw}" ]] || { echo "mkosi did not produce ${raw}" >&2; ls -la "${OUT_DIR}" >&2; exit 1; }
 
-# Plain-text copy of extension-release for test-sysext.sh (the final stage has no dissect tooling).
+# Plain-text copy of extension-release, published next to the .raw and read by test-sysext.sh.
 systemd-dissect --copy-from "${raw}" \
     "/usr/lib/extension-release.d/extension-release.${SYSEXT_NAME}" \
     "${OUT_DIR}/${SYSEXT_NAME}.extension-release"
@@ -83,5 +83,4 @@ for path in \
     grep -Eq "^/?${path}\$" <<<"${listing}" || { echo "Missing from sysext: ${path}" >&2; exit 1; }
 done
 
-cp "${HERE}/test-sysext.sh" "${OUT_DIR}/test-sysext.sh"
 stat -c "${SYSEXT_NAME}.raw: %s bytes" "${raw}"

@@ -1,0 +1,11 @@
+# DX sysext, "script" builder, as its own build FROM the finished image so its dependencies and
+# extension-release match that image. Not part of the image: build-dx.sh runs this, copies /out
+# to a directory and discards the result.
+#   podman build --build-arg BASE=localhost/<image>:<tag> -f build_files/dx/Containerfile.dx .
+# Context: the repository root.
+ARG BASE
+FROM ${BASE}
+
+RUN --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=bind,source=build_files,target=/ctx/build_files \
+    /ctx/build_files/dx/build-sysext.sh

@@ -4,9 +4,6 @@ ARG BASE_IMAGE="quay.io/fedora-ostree-desktops/silverblue"
 ARG BASE_IMAGE_SHA=""
 ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
 ARG BREW_IMAGE_SHA=""
-# How the DX sysext is built: "script" (build-sysext.sh, default) or "mkosi" (built outside this file
-# from the finished image and layered in by build_files/dx/Containerfile.mkosi-layer).
-ARG DX_BUILDER="script"
 
 FROM docker.io/library/golang:alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS umotd-build
 RUN apk add git && \
@@ -198,32 +195,5 @@ RUN --mount=type=cache,dst=/var/cache/libdnf5 \
 RUN rm -rf /opt && ln -s /var/opt /opt
 
 CMD ["/sbin/init"]
-
-RUN bootc container lint
-
-## DX sysext, "script" builder: built FROM the finished image so its dependencies and extension-release match it.
-FROM base AS dx-script
-
-RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/dx/build-sysext.sh
-
-## DX sysext, "mkosi" builder: nothing here. mkosi needs the finished image's rootfs, so it runs after this build.
-FROM base AS dx-mkosi
-
-RUN mkdir -p /out
-
-FROM dx-${DX_BUILDER} AS dx-build
-
-## Final image: the sysext lives in its own last layer, at a path systemd does not scan,
-## so DX stays off until `ujust dx on` links it into /etc/extensions.
-FROM base AS final
-
-ARG DX_BUILDER
-
-COPY --from=dx-build /out/ /usr/share/wrasse/sysexts/
-
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/dx/test-sysext.sh
 
 RUN bootc container lint
