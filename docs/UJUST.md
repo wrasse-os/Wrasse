@@ -35,7 +35,6 @@ forum or chat, links go to the repo. `00-entry.just` imports `flutter.just` opti
 | `toggle-user-motd` | Compatibility shim for the welcome banner (state lives in `~/.config/uwelcome/disabled`). |
 | `powerwash` | Factory reset with `bootc install reset --experimental`, after two confirmations. |
 | `report [args]` | bonedigger: previewed, privacy-respecting bug report created with `gh`. |
-| `contribute` | Runs the Hive contributor worker in an isolated Podman container. |
 | `install-system-flatpaks [confirm]`, `wrasse-apps` | Installs the default system Flatpaks (`wrasse-apps` is an alias for it). |
 | `bazaar-preview <path>` | Previews a Bazaar curated config from a local checkout. |
 
