@@ -3,9 +3,9 @@
 # in the user's home. This stub runs the real binary if it is installed, otherwise
 # explains and offers Anthropic's official native installer (asks first).
 #
-# The real binary is always started inside wrasse-agents.slice so that
-# systemd-oomd kills the agent, not the desktop, when memory runs out.
-# Set WRASSE_AGENT_NO_SLICE=1 to skip the slice.
+# The real binary is always started through wrasse-agent-run, which puts it in a scope
+# under wrasse-agents.slice so that systemd-oomd kills the agent, not the desktop, when
+# memory runs out. Set WRASSE_AGENT_NO_SLICE=1 to skip the slice.
 
 REAL="${HOME}/.local/bin/claude"
 SLICE="wrasse-agents.slice"
@@ -19,14 +19,7 @@ real_is_usable() {
 }
 
 launch() {
-    if [[ -z "${WRASSE_AGENT_NO_SLICE:-}" ]] && command -v systemd-run >/dev/null 2>&1 \
-        && systemd-run --user --scope --quiet --slice="${SLICE}" true >/dev/null 2>&1; then
-        exec systemd-run --user --scope --quiet --slice="${SLICE}" -- "${REAL}" "$@"
-    fi
-    if [[ -z "${WRASSE_AGENT_NO_SLICE:-}" ]]; then
-        echo "claude: no systemd user session; starting without the ${SLICE} memory limit." >&2
-    fi
-    exec "${REAL}" "$@"
+    exec /usr/bin/wrasse-agent-run "${REAL}" "$@"
 }
 
 if real_is_usable; then

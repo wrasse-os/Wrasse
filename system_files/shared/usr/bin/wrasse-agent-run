@@ -1,0 +1,27 @@
+#!/usr/bin/bash
+# Run a coding agent or MCP server command in its own systemd scope under
+# wrasse-agents.slice, so systemd-oomd stops the agent instead of freezing the desktop.
+# Usage: wrasse-agent-run <command> [args...]
+#
+# Each command gets its own scope with MemoryMax as a hard backstop above the slice's
+# soft MemoryHigh=60% (docs/AGENT-SLICE.md), so one runaway server cannot take all RAM.
+#   WRASSE_AGENT_MEMORY_MAX  override MemoryMax (a percentage of RAM or a size, default 75%)
+#   WRASSE_AGENT_NO_SLICE=1  skip the scope and run the command directly
+
+SLICE="wrasse-agents.slice"
+MEMORY_MAX="${WRASSE_AGENT_MEMORY_MAX:-75%}"
+
+if [[ $# -eq 0 ]]; then
+    echo "Usage: wrasse-agent-run <command> [args...]" >&2
+    exit 2
+fi
+
+scope=(systemd-run --user --scope --quiet --slice="${SLICE}" -p "MemoryMax=${MEMORY_MAX}")
+
+if [[ -z "${WRASSE_AGENT_NO_SLICE:-}" ]]; then
+    if command -v systemd-run >/dev/null 2>&1 && "${scope[@]}" -- true >/dev/null 2>&1; then
+        exec "${scope[@]}" -- "$@"
+    fi
+    echo "wrasse-agent-run: no systemd user session; starting without the ${SLICE} memory limit." >&2
+fi
+exec "$@"

@@ -10,8 +10,10 @@ Files (all in the image, no per-user setup):
 - `/usr/lib/systemd/user/wrasse-agents.slice`: `MemoryHigh=60%`, `ManagedOOMMemoryPressure=kill`.
 - `/usr/lib/systemd/user/wrasse-agents.slice.d/20-oomd.conf`: `ManagedOOMMemoryPressureLimit=50%`,
   `ManagedOOMMemoryPressureDurationSec=20s`.
-- `/usr/bin/claude` (the lazy stub) starts the real binary with
-  `systemd-run --user --scope --slice=wrasse-agents.slice`. `WRASSE_AGENT_NO_SLICE=1` skips the slice.
+- `/usr/bin/wrasse-agent-run <cmd...>` runs any agent or MCP server command in its own
+  `systemd-run --user --scope --slice=wrasse-agents.slice -p MemoryMax=75%` scope. `WRASSE_AGENT_MEMORY_MAX` overrides the
+  per-scope cap, `WRASSE_AGENT_NO_SLICE=1` skips the scope. `/usr/bin/claude` (the lazy stub) starts the real binary through it.
+  For an MCP server, put it in front of the command, for example `wrasse-agent-run npx some-mcp-server`.
 - `systemd-oomd.service` is enabled in the image build (`17-cleanup.sh`) and checked in `20-tests.sh`.
 
 ## Proposed limits and why
@@ -19,7 +21,7 @@ Files (all in the image, no per-user setup):
 | Setting | Value | Reasoning |
 |---|---|---|
 | `MemoryHigh` | `60%` of RAM | The desktop (GNOME Shell, a browser, Flatpak apps) needs roughly a third of RAM to stay responsive. Leaving 40% means the agent can use a lot (a big build, several test workers) but not everything. Above this the kernel throttles the slice and reclaims from it aggressively (into zram first), which slows the agent rather than the desktop. It is a soft limit: nothing is killed by it. |
-| `MemoryMax` | not set | A hard cap makes the kernel OOM-kill inside the cgroup with no warning and no chance to relieve pressure first. `MemoryHigh` plus oomd gives a gentler, earlier response. Revisit if a runaway process ever outruns oomd (see below). |
+| `MemoryMax` | not set on the slice; `75%` on each `wrasse-agent-run` scope | On the slice: a hard cap makes the kernel OOM-kill inside the cgroup with no warning and no chance to relieve pressure first. `MemoryHigh` plus oomd gives a gentler, earlier response. Revisit if a runaway process ever outruns oomd (see below). The per-scope `75%` sits above the slice's `60%` `MemoryHigh` and the oomd trigger, so it is only a backstop: it stops one runaway command from taking all RAM, and normally oomd acts first. It is a percentage of installed RAM, not of the slice. |
 | `ManagedOOMMemoryPressure` | `kill` | Makes the slice a candidate for `systemd-oomd`. oomd kills the descendant cgroup (the agent's scope) with the most reclaim activity, with SIGKILL, so the whole agent and its children go together. |
 | `ManagedOOMMemoryPressureLimit` | `50%` | Pressure is the share of a 10 s window in which tasks in the slice were stalled on memory. A throttled agent (above `MemoryHigh`) shows up as pressure, so this is "throttled for half the time". oomd's default is 60%, and Fedora's `systemd-oomd-defaults` sets 80% on every user slice. 50% makes the agent the first thing to go. |
 | `ManagedOOMMemoryPressureDurationSec` | `20s` | Must hold for 20 s before the kill (oomd default 30 s). Long enough to ride out a short compile spike, short enough that a real runaway is stopped before the desktop starves. The minimum allowed is 1 s. |

@@ -86,8 +86,12 @@ test -f /usr/share/wrasse/skills/wrasse/SKILL.md
 test -x /usr/share/ublue-os/user-setup.hooks.d/30-wrasse-agent-skill.sh
 test -f /etc/profile.d/wrasse-path.sh
 test -f /usr/share/fish/vendor_conf.d/wrasse-path.fish
-# The stub launches inside the agent slice.
-grep -q "wrasse-agents.slice" /usr/bin/claude
+# The stub launches through wrasse-agent-run, which runs the command in a scope under the agent slice with a MemoryMax.
+test -x /usr/bin/wrasse-agent-run
+grep -q "wrasse-agent-run" /usr/bin/claude
+grep -q -- "--slice=\"\${SLICE}\"" /usr/bin/wrasse-agent-run
+grep -q '^SLICE="wrasse-agents.slice"$' /usr/bin/wrasse-agent-run
+grep -q 'MemoryMax=' /usr/bin/wrasse-agent-run
 # There is no user manager inside a container build, so `systemd-analyze --user verify` cannot run; check the settings statically.
 grep -q '^MemoryHigh=' /usr/lib/systemd/user/wrasse-agents.slice
 grep -q '^ManagedOOMMemoryPressure=kill$' /usr/lib/systemd/user/wrasse-agents.slice
