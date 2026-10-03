@@ -171,3 +171,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 
 - **DX sysext build**: pass `--arch` once per architecture to `dnf5 download`; the comma-separated form is rejected ("Unsupported architecture noarch,x86_64"), which failed every stable cell.
 - **gnome-rounded-blur on pre-release Fedora**: skipped when the COPR has no build (ublue-os/packages builds it for Fedora 44 only today), instead of failing the image. Rounded blur corners are cosmetic.
+
+- **Build pull retries**: `podman build --retry 5 --retry-delay 15s` after a quay.io CDN blob dropped mid-pull (unexpected EOF) failed the next/nvidia cell. The cell passed on re-run; the retry is hardening.

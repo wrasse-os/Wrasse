@@ -238,6 +238,11 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
         echo "No GitHub token found - build may hit rate limit"
     fi
 
+    # quay.io's CDN occasionally drops a blob mid-pull; podman's default of 3 quick retries was not enough in CI
+    if [[ "${PODMAN}" =~ podman ]]; then
+        PODMAN_BUILD_ARGS+=(--retry 5 --retry-delay 15s)
+    fi
+
     ${PODMAN} build "${PODMAN_BUILD_ARGS[@]}" .
     echo "::endgroup::"
 
