@@ -125,10 +125,17 @@ grep -q '^system-status:' /usr/share/ublue-os/just/60-custom.just
 # Sysext safe mode: the drop-in that skips systemd-sysext.service on wrasse.safe=1.
 grep -q '^ConditionKernelCommandLine=!wrasse.safe=1$' /usr/lib/systemd/system/systemd-sysext.service.d/10-wrasse-safe-mode.conf
 
+# tuned is the power daemon: tuned-ppd provides the net.hadess.PowerProfiles D-Bus API for GNOME, and conflicts with power-profiles-daemon.
+rpm -q tuned tuned-ppd >/dev/null
+! rpm -q power-profiles-daemon >/dev/null 2>&1
+test -f /usr/share/dbus-1/system-services/net.hadess.PowerProfiles.service
+test -f /usr/lib/systemd/system/tuned-ppd.service
+
 IMPORTANT_UNITS=(
     rpm-ostree-countme.timer
     systemd-oomd.service
     tailscaled.service
+    tuned.service
     ublue-system-setup.service
     uupd.timer
   )

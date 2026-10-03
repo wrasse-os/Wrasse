@@ -84,6 +84,8 @@ FEDORA_PACKAGES=(
     sssd-nfs-idmap
     switcheroo-control
     tmux
+    tuned
+    tuned-ppd
     usbip
     usbmuxd
     waypipe
@@ -114,6 +116,13 @@ case "$FEDORA_MAJOR_VERSION" in
         )
         ;;
 esac
+
+# tuned-ppd provides net.hadess.PowerProfiles (what GNOME's power profile menu talks to) and declares
+# Conflicts: ppd-service, which power-profiles-daemon also provides; it only obsoletes ppd < 0.23-2, so the
+# base image's power-profiles-daemon 0.30 must be removed before the bulk install.
+if rpm -q power-profiles-daemon >/dev/null 2>&1; then
+    dnf -y remove power-profiles-daemon
+fi
 
 # Install all Fedora packages (bulk - safe from COPR injection)
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."

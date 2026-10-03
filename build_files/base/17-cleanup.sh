@@ -14,6 +14,8 @@ systemctl enable flatpak-nuke-fedora.service
 systemctl enable input-remapper.service
 systemctl enable rpm-ostree-countme.service
 systemctl enable tailscaled.service
+# tuned-ppd.service is D-Bus activated (net.hadess.PowerProfiles) and needs tuned running.
+systemctl enable tuned.service
 systemctl enable wrasse-zram-recompress.timer
 # wrasse-agents.slice (ManagedOOMMemoryPressure=kill) only has an effect with systemd-oomd running.
 systemctl enable systemd-oomd.service
