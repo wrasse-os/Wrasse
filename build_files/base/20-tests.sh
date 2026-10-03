@@ -92,6 +92,16 @@ grep -q "wrasse-agents.slice" /usr/bin/claude
 grep -q '^MemoryHigh=' /usr/lib/systemd/user/wrasse-agents.slice
 grep -q '^ManagedOOMMemoryPressure=kill$' /usr/lib/systemd/user/wrasse-agents.slice
 
+# Claude Code sandbox default: bubblewrap and socat are installed, the managed drop-in turns the sandbox on and keeps prompts
+# (autoAllowBashIfSandboxed defaults to true upstream, which would auto-approve sandboxed Bash, so it must stay false).
+rpm -q bubblewrap socat >/dev/null
+test -x /usr/bin/bwrap
+python3 - <<'PY'
+import json
+d = json.load(open("/etc/claude-code/managed-settings.d/10-wrasse-sandbox.json"))
+assert d == {"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": False}}, d
+PY
+
 # Rollback and status recipes ship in the vendored ujust file.
 grep -q '^rollback:' /usr/share/ublue-os/just/60-custom.just
 grep -q '^system-status:' /usr/share/ublue-os/just/60-custom.just

@@ -25,6 +25,7 @@ FEDORA_PACKAGES=(
     bcache-tools
     bootc
     borgbackup
+    bubblewrap
     containerd
     cryfs
     davfs2
@@ -79,6 +80,7 @@ FEDORA_PACKAGES=(
     samba-winbind-clients
     samba-winbind-modules
     setools-console
+    socat
     sssd-nfs-idmap
     switcheroo-control
     tmux
