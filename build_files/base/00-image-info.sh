@@ -4,13 +4,13 @@ echo "::group:: ===$(basename "$0")==="
 
 set -xeuo pipefail
 
-IMAGE_PRETTY_NAME="Bluefin"
+IMAGE_PRETTY_NAME="Wrasse"
 IMAGE_LIKE="fedora"
-HOME_URL="https://projectbluefin.io"
-DOCUMENTATION_URL="https://docs.projectbluefin.io"
-SUPPORT_URL="https://github.com/ublue-os/bluefin/issues/"
-BUG_SUPPORT_URL="https://github.com/ublue-os/bluefin/issues/"
-CODE_NAME="Deinonychus"
+HOME_URL="https://github.com/wrasse-os/Wrasse"
+DOCUMENTATION_URL="https://github.com/wrasse-os/Wrasse/tree/main/docs"
+SUPPORT_URL="https://github.com/wrasse-os/Wrasse/issues/"
+BUG_SUPPORT_URL="https://github.com/wrasse-os/Wrasse/issues/"
+CODE_NAME="Cheilinus"
 VERSION="${VERSION:-00.00000000}"
 
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
@@ -42,7 +42,7 @@ sed -i "s|^HOME_URL=.*|HOME_URL=\"$HOME_URL\"|" /usr/lib/os-release
 sed -i "s|^DOCUMENTATION_URL=.*|DOCUMENTATION_URL=\"$DOCUMENTATION_URL\"|" /usr/lib/os-release
 sed -i "s|^SUPPORT_URL=.*|SUPPORT_URL=\"$SUPPORT_URL\"|" /usr/lib/os-release
 sed -i "s|^BUG_REPORT_URL=.*|BUG_REPORT_URL=\"$BUG_SUPPORT_URL\"|" /usr/lib/os-release
-sed -i "s|^CPE_NAME=\"cpe:/o:fedoraproject:fedora|CPE_NAME=\"cpe:/o:universal-blue:${IMAGE_PRETTY_NAME,}|" /usr/lib/os-release
+sed -i "s|^CPE_NAME=\"cpe:/o:fedoraproject:fedora|CPE_NAME=\"cpe:/o:wrasse-os:${IMAGE_PRETTY_NAME,}|" /usr/lib/os-release
 sed -i "s|^DEFAULT_HOSTNAME=.*|DEFAULT_HOSTNAME=\"${IMAGE_PRETTY_NAME,}\"|" /usr/lib/os-release
 sed -i "s|^ID=fedora|ID=${IMAGE_PRETTY_NAME,}\nID_LIKE=\"${IMAGE_LIKE}\"|" /usr/lib/os-release
 sed -i "/^REDHAT_BUGZILLA_PRODUCT=/d; /^REDHAT_BUGZILLA_PRODUCT_VERSION=/d; /^REDHAT_SUPPORT_PRODUCT=/d; /^REDHAT_SUPPORT_PRODUCT_VERSION=/d" /usr/lib/os-release
