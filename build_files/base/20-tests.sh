@@ -88,7 +88,9 @@ test -f /etc/profile.d/wrasse-path.sh
 test -f /usr/share/fish/vendor_conf.d/wrasse-path.fish
 # The stub launches inside the agent slice.
 grep -q "wrasse-agents.slice" /usr/bin/claude
-systemd-analyze --user verify /usr/lib/systemd/user/wrasse-agents.slice
+# There is no user manager inside a container build, so `systemd-analyze --user verify` cannot run; check the settings statically.
+grep -q '^MemoryHigh=' /usr/lib/systemd/user/wrasse-agents.slice
+grep -q '^ManagedOOMMemoryPressure=kill$' /usr/lib/systemd/user/wrasse-agents.slice
 
 IMPORTANT_UNITS=(
     rpm-ostree-countme.timer
