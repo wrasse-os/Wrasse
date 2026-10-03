@@ -699,7 +699,7 @@ fn rollback(
     let mut preview = entry_text("booted", &d.booted);
     preview.push_str(&entry_text("rollback", &d.rollback));
     let notes = "The rollback image boots next and the current one becomes the rollback. A staged \
-                 update is discarded. The DX sysext is part of the image and rolls back with it. \
+                 update is discarded. DX follows the image: after the rollback it uses the sysext downloaded for that image, else run ujust dx update. \
                  /etc returns to the previous deployment's state (bootc does not merge it again).";
     if !a.yes && !ctx.dry() {
         let question = format!("{preview}{notes}\nRoll back? [y/N] ");
