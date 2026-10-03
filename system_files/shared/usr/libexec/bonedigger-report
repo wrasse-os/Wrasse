@@ -3,7 +3,7 @@
 set -euo pipefail
 
 IMAGE_INFO_FILE="${IMAGE_INFO_FILE:-/usr/share/ublue-os/image-info.json}"
-BONEDIGGER_BRAND="${BONEDIGGER_BRAND:-🫐 Bluefin Bug Report}"
+BONEDIGGER_BRAND="${BONEDIGGER_BRAND:-Wrasse Bug Report}"
 DRAFT_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/ujust-report/drafts"
 LOCAL_REPORT_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/ujust-report"
 MAX_BASELINE_BYTES=$((64 * 1024))
@@ -136,7 +136,7 @@ route_issue_repo() {
     # Routing grammar lives in one place only — see
     # system_files/shared/usr/libexec/ublue-image-repo.
     BUG_REPO="$("${UBLUE_IMAGE_REPO_BIN:-/usr/libexec/ublue-image-repo}" \
-        --default "projectbluefin/common" "$IMAGE_NAME" "$IMAGE_TAG")"
+        --default "wrasse-os/Wrasse" "$IMAGE_NAME" "$IMAGE_TAG")"
 }
 
 scrub_kernel_log() {
@@ -642,7 +642,7 @@ collect_feature_body() {
     local description="$2"
 
     {
-        printf '## 🫐 Bluefin Feature Request\n\n'
+        printf '## Wrasse Feature Request\n\n'
         printf '_Created with `ujust report`._\n\n'
         printf '### Requested change\n\n%s\n' "$description"
     } > "$DRAFT_DIR/issue.md"
@@ -959,8 +959,8 @@ prompt_required() {
 }
 
 show_help() {
-    printf '\nFor troubleshooting and questions, visit Bluefin Discussions:\n'
-    printf 'https://github.com/ublue-os/bluefin/discussions\n'
+    printf '\nFor troubleshooting and questions, open an issue:\n'
+    printf 'https://github.com/wrasse-os/Wrasse/issues\n'
     printf 'No issue was created.\n'
 }
 
@@ -997,10 +997,10 @@ start_feature_request() {
 
     gum style --bold --foreground 212 "Feature request"
     gum style --foreground 245 \
-        "Feature requests go to: https://github.com/projectbluefin/common/issues/new"
+        "Feature requests go to: https://github.com/wrasse-os/Wrasse/issues/new"
     title="$(prompt_required "Short title")" || return
     description="$(prompt_required "What would you like to see?")" || return
-    create_draft "projectbluefin/common"
+    create_draft "wrasse-os/Wrasse"
     collect_feature_body "$title" "$description"
     write_profile_list
     submit_draft

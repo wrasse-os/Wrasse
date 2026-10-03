@@ -3,7 +3,7 @@
 # bonedigger version v0.2.0
 BONEDIGGER_VERSION := "v0.2.0"
 
-export BONEDIGGER_BRAND := "🫐 Bluefin Bug Report"
+export BONEDIGGER_BRAND := "Wrasse Bug Report"
 
 # Collect a previewed, privacy-respecting report and create an issue directly with gh.
 [group('System')]

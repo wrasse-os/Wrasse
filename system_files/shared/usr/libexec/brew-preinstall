@@ -178,7 +178,7 @@ fi
 
 # Snapshot installed names before brew bundle. A declaration that was already
 # installed at this point belongs to the user unless the previous state file
-# already says Bluefin managed it. If either inventory query fails, stop before
+# already says Wrasse managed it. If either inventory query fails, stop before
 # bundling so an incomplete snapshot cannot adopt user-owned software.
 installed_packages_before=$(brew list --formula) || {
     echo "brew-preinstall: error: could not snapshot installed formulae; state unchanged, will retry"

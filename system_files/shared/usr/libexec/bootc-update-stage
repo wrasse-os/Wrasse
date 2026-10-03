@@ -8,7 +8,7 @@
 # the new image and queues it as a staged deployment; ostree-finalize-staged
 # applies it at the user's next ordinary shutdown or reboot. Nothing here
 # reboots, restarts, or otherwise changes the running system. uupd remains
-# the owner of Bluefin's background update policy; this script only backs
+# the owner of Wrasse's background update policy; this script only backs
 # ChairLift's manual "check for updates now" action.
 #
 # Contract: no arguments are read or required. Any arguments pkexec may

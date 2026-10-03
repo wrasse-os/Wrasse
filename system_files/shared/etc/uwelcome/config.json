@@ -24,15 +24,11 @@
   "links": [
     {
       "name": "issues",
-      "url": "https://issues.projectbluefin.io/"
-    },
-    {
-      "name": "Ask Bluefin",
-      "url": "https://ask.projectbluefin.io/"
+      "url": "https://github.com/wrasse-os/Wrasse/issues"
     },
     {
       "name": "docs",
-      "url": "https://docs.projectbluefin.io/"
+      "url": "https://github.com/wrasse-os/Wrasse/tree/main/docs"
     }
   ],
   "motd": {

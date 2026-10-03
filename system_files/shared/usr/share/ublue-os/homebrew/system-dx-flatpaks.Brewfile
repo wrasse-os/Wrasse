@@ -1,4 +1,4 @@
-# Flatpaks for DX mode on Bluefin
+# Flatpaks for DX mode on Wrasse
 flatpak "de.leopoldluley.Clapgrep"
 flatpak "io.github.getnf.embellish"
 flatpak "io.podman_desktop.PodmanDesktop"

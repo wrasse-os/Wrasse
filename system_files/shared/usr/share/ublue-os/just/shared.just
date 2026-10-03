@@ -1,6 +1,5 @@
 # vim: set ft=make :
-# These are recipes that are generic and should be available in bluefin, aurora,
-# bluefin-lts, and dakota
+# These are recipes that are generic and should be available on every Wrasse image
 
 # Toggle LUKS auto-unlock via TPM2
 [group('System')]

@@ -3,7 +3,7 @@ set ignore-comments
 
 _default:
     #!/usr/bin/bash
-    echo "https://docs.projectbluefin.io/administration#community-aliases-and-workarounds"
+    echo "https://github.com/wrasse-os/Wrasse/blob/main/docs/UJUST.md"
     ujust --list --list-heading $'Available commands:\n' --list-prefix $' - '
 
 # Imports

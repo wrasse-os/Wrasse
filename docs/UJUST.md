@@ -1,8 +1,8 @@
 # ujust reference
 
 Recipes that exist in `system_files/shared/usr/share/ublue-os/just/` as of this tree (listed with `just --list` over those files).
-`ujust` with no arguments lists what is installed on a running system. Recipe text still says Bluefin in places (`brand:` is
-deferred). `00-entry.just` imports `flutter.just` optionally; that file does not exist here.
+`ujust` with no arguments lists what is installed on a running system. Recipe and link text now says Wrasse; there is no
+forum or chat, links go to the repo. `00-entry.just` imports `flutter.just` optionally; that file does not exist here.
 
 ## Wrasse recipes (`60-custom.just`)
 
@@ -36,7 +36,7 @@ deferred). `00-entry.just` imports `flutter.just` optionally; that file does not
 | `powerwash` | Factory reset with `bootc install reset --experimental`, after two confirmations. |
 | `report [args]` | bonedigger: previewed, privacy-respecting bug report created with `gh`. |
 | `contribute` | Runs the Hive contributor worker in an isolated Podman container. |
-| `install-system-flatpaks [confirm]`, `bluefin-apps` | Installs the default system Flatpaks (`bluefin-apps` is an alias for it). |
+| `install-system-flatpaks [confirm]`, `wrasse-apps` | Installs the default system Flatpaks (`wrasse-apps` is an alias for it). |
 | `bazaar-preview <path>` | Previews a Bazaar curated config from a local checkout. |
 
 ## Developer and VM tooling (user space, separate from the DX sysext)
@@ -62,8 +62,8 @@ deferred). `00-entry.just` imports `flutter.just` optionally; that file does not
 
 - `toggle-testing` only knows `stable`, `latest`, `lts` tags and switches to `testing`/`lts-testing`; Wrasse has no such tags, so it
   is wrong on Wrasse. To move between `reimagined`, `next` and `stable`, use `sudo bootc switch` (`docs/INSTALL.md`).
-- `changelogs`, `update` text and recipe headings still point to Bluefin resources. These belong to `brand:` and to deciding what
-  the testing channel becomes (`docs/SPEC.md`, Phase 2).
+- `changelogs` reads GitHub releases of `wrasse-os/Wrasse` (via `ublue-image-repo`) and still looks for gts/lts tag names; what the
+  testing channel becomes is a Phase 2 decision (`docs/SPEC.md`).
 
 ## Soft-reboot updates
 

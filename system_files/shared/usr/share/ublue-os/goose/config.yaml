@@ -1,4 +1,4 @@
-# Bluefin default Goose configuration; select a model provider in Goose.
+# Wrasse default Goose configuration; select a model provider in Goose.
 # Keep the prefix/bin symlink; a resolved Cellar path expires after an upgrade.
 extensions:
   linux-mcp-server:

@@ -1,4 +1,4 @@
-# Default system-wide flatpaks for Bluefin
+# Default system-wide flatpaks for Wrasse
 flatpak "be.alexandervanhee.gradia"
 flatpak "com.github.rafostar.Clapper"
 flatpak "com.github.tchx84.Flatseal"

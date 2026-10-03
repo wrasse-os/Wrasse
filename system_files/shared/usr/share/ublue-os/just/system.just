@@ -1,5 +1,5 @@
 # vim: set ft=make :
-# This file should only contain bluefin specific stuff
+# This file should only contain Wrasse specific stuff
 
 # alias for toggle-devmode
 devmode:
@@ -24,7 +24,7 @@ toggle-devmode:
     set -e
     JUSTFILE="{{ justfile() }}"
     IMAGE_INFO_FILE="${IMAGE_INFO_FILE:-/usr/share/ublue-os/image-info.json}"
-    DEVMODE_MARKER="${HOME}/.config/bluefin/devmode"
+    DEVMODE_MARKER="${HOME}/.config/wrasse/devmode"
 
     gum style \
         --foreground 212 --border-foreground 212 --border double \
@@ -176,7 +176,7 @@ toggle-devmode:
         just --justfile "${JUSTFILE}" setup-lima
     fi
 
-    mkdir -p "${HOME}/.config/bluefin"
+    mkdir -p "${HOME}/.config/wrasse"
     touch "${DEVMODE_MARKER}"
     echo ""
     gum style \
@@ -346,34 +346,30 @@ install-system-flatpaks $confirm="1":
 
 # For additional developer tools, run: ujust devmode
 [group('System')]
-bluefin-apps:
+wrasse-apps:
     echo "Installing default system flatpaks..."
     @ujust install-system-flatpaks
 
-# Preview Bazaar curated config from a local common checkout
-# Usage: ujust bazaar-preview /path/to/common
+# Preview Bazaar curated config from a local Wrasse checkout
+# Usage: ujust bazaar-preview /path/to/Wrasse
 [group('System')]
 bazaar-preview source="{{ invocation_directory() }}":
     #!/usr/bin/env bash
     set -euo pipefail
     SRC_DIR="${source}"
-    BAZAAR_DIR="${SRC_DIR}/system_files/bluefin/etc/bazaar"
+    BAZAAR_DIR="${SRC_DIR}/system_files/shared/etc/bazaar"
     for f in bazaar.yaml curated.yaml blocklist.yaml; do
         if [[ ! -f "${BAZAAR_DIR}/${f}" ]]; then
             echo "Missing ${BAZAAR_DIR}/${f}"
-            echo "Usage: ujust bazaar-preview /path/to/common"
+            echo "Usage: ujust bazaar-preview /path/to/Wrasse"
             exit 1
         fi
     done
     sudo -v
     flatpak info io.github.kolunmi.Bazaar >/dev/null
 
-    BRANDING_DIR="${SRC_DIR}/bluefin-branding/system_files/etc/bazaar"
-    if [[ -d "${BRANDING_DIR}" ]]; then
-        sudo install -d -m0755 /etc/bazaar
-        sudo install -m0644 "${BRANDING_DIR}"/*.jxl /etc/bazaar/
-    fi
     sudo install -d -m0755 /etc/bazaar
+    sudo install -m0644 "${BAZAAR_DIR}"/*.jxl /etc/bazaar/
     sudo install -m0644 "${BAZAAR_DIR}/bazaar.yaml" /etc/bazaar/bazaar.yaml
     sudo install -m0644 "${BAZAAR_DIR}/curated.yaml" /etc/bazaar/curated.yaml
     sudo install -m0644 "${BAZAAR_DIR}/blocklist.yaml" /etc/bazaar/blocklist.yaml

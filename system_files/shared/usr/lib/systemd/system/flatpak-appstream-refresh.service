@@ -1,6 +1,6 @@
 [Unit]
 Description=Refresh Flatpak remote metadata
-Documentation=https://docs.projectbluefin.io
+Documentation=https://github.com/wrasse-os/Wrasse/tree/main/docs
 After=network-online.target flatpak-system-helper.service
 Wants=network-online.target
 ConditionPathExists=/usr/bin/flatpak

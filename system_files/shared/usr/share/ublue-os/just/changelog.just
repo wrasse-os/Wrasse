@@ -12,7 +12,7 @@ changelogs:
     # repo grammar is owned by /usr/libexec/ublue-image-repo; do not restate it.
     IMAGE_NAME="$(jq -r '.["image-name"] // empty' < "${IMAGE_INFO_FILE}")"
     REPO="$("${UBLUE_IMAGE_REPO_BIN:-/usr/libexec/ublue-image-repo}" \
-        --default "projectbluefin/bluefin" "$IMAGE_NAME" "$TAG")"
+        --default "wrasse-os/Wrasse" "$IMAGE_NAME" "$TAG")"
 
     # If stable, gts, or lts, fetch from GitHub Releases
     if [[ "$TAG" =~ gts$|stable$|^lts ]]; then

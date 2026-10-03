@@ -1,4 +1,4 @@
-# ChairLift configuration for Bluefin (maintainer defaults).
+# ChairLift configuration for Wrasse (maintainer defaults).
 # Admin overrides go in /etc/chairlift/config.yml, which takes priority.
 # Reference: https://github.com/projectbluefin/chairlift/blob/main/CONFIG.md
 
@@ -22,7 +22,7 @@ updates_page:
     enabled: true
   brew_trust_group:
     enabled: true
-  # Update policy on Bluefin belongs to uupd (silent background staging,
+  # Update policy on Wrasse belongs to uupd (silent background staging,
   # 6-hour timer + AC connect; user reboots on their own schedule).
   # Upstream's updates_page schema is a fixed set of groups: as of the
   # pinned v26.09.0-alpha.2 release, the five above plus
@@ -63,16 +63,15 @@ maintenance_page:
 
 features_page:
   # Upstream defines features_group as the system features managed by updex
-  # (requires the `updex` command), and updex is not present on Bluefin.
+  # (requires the `updex` command), and updex is not present on Wrasse.
   # Unlike bootc staging, no updex helper ships on the image, so this stays
   # off regardless of the polkit fix in frostyard/chairlift#54 — flip only
-  # if/when updex ever ships on Bluefin.
+  # if/when updex ever ships on Wrasse.
   features_group:
     enabled: false
 
 help_page:
   help_resources_group:
     enabled: true
-    website: https://docs.projectbluefin.io/
-    issues: https://issues.projectbluefin.io/
-    chat: https://ask.projectbluefin.io/
+    website: https://github.com/wrasse-os/Wrasse/tree/main/docs
+    issues: https://github.com/wrasse-os/Wrasse/issues

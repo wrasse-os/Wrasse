@@ -1,5 +1,5 @@
 # vim: set ft=make :
-# These are convenience shortcuts, they should not be specific to a desktop, aimed to be rather generic things for both Aurora and Bluefin
+# These are convenience shortcuts, they should not be specific to a desktop, aimed to be rather generic things
 
 uid := `id -u`
 shell := `grep :$(id -u): /etc/passwd | cut -d: -f7`
