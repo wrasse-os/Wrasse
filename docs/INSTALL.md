@@ -43,8 +43,19 @@ systemctl reboot
 ```
 
 Use `wrasse-nvidia` and/or another line in the same way. `bootc status` shows the booted and staged images; `sudo bootc rollback`
-returns to the previous one. The in-image signature policy still only covers `ghcr.io/ublue-os` and `/cosign.pub` is still
-Bluefin's, so do not rely on signature enforcement for Wrasse images yet.
+returns to the previous one.
+
+Images are signed with the key in `/cosign.pub`, and the image ships the policy that checks it (`/etc/containers/policy.json`,
+`/etc/containers/registries.d/wrasse-os.yaml`, `/usr/lib/pki/containers/wrasse.pub`). A system already running a Wrasse image can
+enforce it on a switch:
+
+```fish
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/wrasse-os/wrasse:stable
+```
+
+`ujust toggle-testing` already does this. The very first switch from a non-Wrasse system cannot enforce, because the policy is
+not on the old image yet; do that one with plain `bootc switch` and enforce on later switches. Check a pulled image by hand with
+`cosign verify --key cosign.pub ghcr.io/wrasse-os/wrasse:stable`.
 
 ## Live ISO
 

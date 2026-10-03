@@ -23,12 +23,14 @@ Do not commit `cosign.key`.
 
 ## Things to do in the repo and org (not secrets)
 
-1. Replace `/cosign.pub` in the repo root with the new public key. The checked-in file is Bluefin's.
-2. Ship the public key and trust policy in the image so `bootc switch --enforce-container-sigpolicy ghcr.io/wrasse-os/wrasse`
-   actually verifies. Today `system_files/shared/etc/containers/policy.json` only verifies `ghcr.io/ublue-os`;
-   `ghcr.io/wrasse-os` falls through to `insecureAcceptAnything`. Needed: a `wrasse-os.pub` under
-   `/usr/lib/pki/containers/`, a `ghcr.io/wrasse-os` `sigstoreSigned` entry in `policy.json`, and a matching
-   `registries.d` file with `use-sigstore-attachments: true`. This is not done (it needs your public key).
+1. `/cosign.pub` is the Wrasse public key. Done.
+2. The image ships the trust policy: `system_files/shared/usr/lib/pki/containers/wrasse.pub` (a copy of `/cosign.pub`), a
+   `ghcr.io/wrasse-os` `sigstoreSigned` entry in `system_files/shared/etc/containers/policy.json`, and
+   `registries.d/wrasse-os.yaml` with `use-sigstore-attachments: true`. So
+   `bootc switch --enforce-container-sigpolicy ghcr.io/wrasse-os/wrasse` verifies. On key rotation, replace `/cosign.pub` and
+   `wrasse.pub` together and keep the old key in the policy (`keyPaths`) until all supported images carry the new one, or older
+   installs cannot pull. Never use `subjectRegExp` or keyless identities in this entry (they broke every pull in Bluefin,
+   projectbluefin/common#1194); CI signs with the key, so the policy is key-based.
 3. After the first push each package (`wrasse`, `wrasse-nvidia`) is created private. Set it public (Package settings, Change
    visibility) and under "Manage Actions access" make sure the `Wrasse` repository has Write access.
 4. Actions settings: workflow permissions can stay "Read repository contents"; the workflow requests `packages: write`,

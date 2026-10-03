@@ -124,8 +124,8 @@ negativo17 stays complete for branched Fedora (it does not: its F45 ffmpeg stack
 
 Other blocked or open items:
 - `reimagined` nvidia and `reimagined` as the feature-first channel: pending decisions 3 and 4 (placeholder noted above).
-- Signing: images are signed with `SIGNING_SECRET`, but the in-image trust policy only covers `ghcr.io/ublue-os` (`policy.json`,
-  `registries.d`, `ublue-os.pub`), and `/cosign.pub` is still Bluefin's. Needs the user's key; steps in `docs/CI-SECRETS.md`.
+- Signing: images are signed with `SIGNING_SECRET`; the in-image trust policy for `ghcr.io/wrasse-os` ships (`wrasse.pub`, `policy.json`,
+  `registries.d`). Unverified until a signed image is pulled with `--enforce-container-sigpolicy`.
 - On-device leftovers that still mention lts/gts/testing and the Bluefin repo (`ujust changelogs`, `ujust toggle-testing`, `ublue-image-repo`
   routing in `system_files/`) were not touched: they are runtime behavior tied to `brand:` and to what the `testing` channel becomes.
 - Not verified without CI: the whole workflow end to end (actionlint passes with the pre-existing `ubuntu-26.04` label ignored),
