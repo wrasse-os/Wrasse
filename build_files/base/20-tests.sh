@@ -89,6 +89,7 @@ fi
 test -x /usr/bin/claude
 test -f /usr/lib/systemd/user/wrasse-agents.slice
 test -f /usr/lib/systemd/user/wrasse-agents.slice.d/20-oomd.conf
+grep -q '^DefaultMemoryPressureDurationSec=20s$' /usr/lib/systemd/oomd.conf.d/20-wrasse.conf
 test -f /usr/share/wrasse/skills/wrasse/SKILL.md
 test -x /usr/share/ublue-os/user-setup.hooks.d/30-wrasse-agent-skill.sh
 test -f /usr/share/wrasse/AGENTS.md
