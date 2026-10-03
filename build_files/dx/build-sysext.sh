@@ -95,7 +95,7 @@ case "${arch}" in
 esac
 
 echo "Downloading ${#PACKAGES[@]} packages plus dependencies missing from the image"
-dnf5 -y download --resolve --enablerepo=code --arch="noarch,${arch}" \
+dnf5 -y download --resolve --enablerepo=code --arch=noarch --arch="${arch}" \
     --destdir="${RPMS}" "${PACKAGES[@]}"
 
 echo "Extracting RPMs"
