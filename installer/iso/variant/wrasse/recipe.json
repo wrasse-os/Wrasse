@@ -8,11 +8,25 @@
   "selinuxDisabled": false,
   "unifiedStorage": true,
   "steps": {
-    "welcome": { "template": "welcome", "protected": true },
-    "image": { "template": "image" },
-    "disk": { "template": "disk" },
-    "slurp": { "template": "slurp" },
-    "encryption": { "template": "encryption" },
-    "user": { "template": "user" }
-  }
+    "welcome": {
+      "template": "welcome",
+      "protected": true
+    },
+    "image": {
+      "template": "image"
+    },
+    "disk": {
+      "template": "disk"
+    },
+    "slurp": {
+      "template": "slurp"
+    },
+    "encryption": {
+      "template": "encryption"
+    },
+    "user": {
+      "template": "user"
+    }
+  },
+  "min_disk_size": 25600
 }

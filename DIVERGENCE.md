@@ -253,3 +253,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **fastfetch logo**: Wrasse ASCII logo (`/usr/share/wrasse/fastfetch/logo.txt`, original placeholder art) instead of the distro-ID fallback logo. The OS line already reads the Wrasse `os-release`.
 
 - **Cursor theme**: Bibata Modern Classic (as Linux Mint), pinned v2.0.7 release asset verified by sha256, set as the default `cursor-theme` in light and dark mode. One consistent theme on purpose: GNOME has no per-color-scheme cursor setting and a switcher would not update Flatpak/Qt/Xwayland apps live. Bibata is GPL-3.0.
+
+- **Installer minimum disk size**: `min_disk_size` is 25 GB (installer default is 50 GB) in the Wrasse recipe. The installed image is about 11-14 GB and a second deployment needs room, so 25 GB is a sensible floor; 50 GB blocked small test VMs.
