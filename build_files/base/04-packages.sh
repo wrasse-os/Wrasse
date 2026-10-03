@@ -131,7 +131,12 @@ copr_install_isolated "che/nerd-fonts" "nerd-fonts"
 
 # From ublue-os/packages
 copr_install_isolated "ublue-os/packages" "uupd"
-copr_install_isolated "ublue-os/packages" "gnome-rounded-blur"
+# gnome-rounded-blur only has COPR builds for released Fedora; skip it on pre-release (rounded blur corners are cosmetic).
+if [[ "${FEDORA_PRERELEASE:-0}" == "1" ]]; then
+    copr_install_isolated "ublue-os/packages" "gnome-rounded-blur" || echo "gnome-rounded-blur has no build for Fedora $(rpm -E %fedora); skipping"
+else
+    copr_install_isolated "ublue-os/packages" "gnome-rounded-blur"
+fi
 
 # Version-specific COPR packages
 # case "$FEDORA_MAJOR_VERSION" in
