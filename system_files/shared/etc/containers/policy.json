@@ -41,6 +41,15 @@
                     }
                 }
             ],
+            "ghcr.io/wrasse-os": [
+                {
+                    "type": "sigstoreSigned",
+                    "keyPath": "/usr/lib/pki/containers/wrasse.pub",
+                    "signedIdentity": {
+                        "type": "matchRepository"
+                    }
+                }
+            ],
             "": [
                 {
                     "type": "insecureAcceptAnything"

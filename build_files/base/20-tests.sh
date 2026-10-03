@@ -18,6 +18,13 @@ BACKUP_KEY_SHA256="b723467015ba562d40b4645c98c51c65d8254bb59444f6e9962debcfe2315
 echo "${KEY1_SHA256}  ${KEY1}" | sha256sum -c -
 echo "${BACKUP_KEY_SHA256}  ${BACKUP_KEY}" | sha256sum -c -
 
+# Wrasse's own images must verify against the Wrasse key (static checks only).
+WRASSE_KEY=$(jq -r '.transports.docker."ghcr.io/wrasse-os"[0].keyPath' /etc/containers/policy.json)
+test "$(jq -r '.transports.docker."ghcr.io/wrasse-os"[0].type' /etc/containers/policy.json)" = "sigstoreSigned"
+test "${WRASSE_KEY}" = "/usr/lib/pki/containers/wrasse.pub"
+grep -q -- '-----BEGIN PUBLIC KEY-----' "${WRASSE_KEY}"
+grep -q 'use-sigstore-attachments: true' /etc/containers/registries.d/wrasse-os.yaml
+
 for i in bin/ujust share/ublue-os/just/{00-entry.just,apps.just,default.just,system.just,update.just,} ; do
    stat /usr/$i
 done
