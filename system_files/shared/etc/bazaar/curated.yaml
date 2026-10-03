@@ -337,3 +337,19 @@ rows:
       - io.github.sugarycandybar.Carabiner
       - io.github.tobagin.digger
       - io.github.lo2dev.Echo
+- section:
+    title:
+      en: Agents and Developer Tools
+    subtitle:
+      string:
+        en: AI coding agents, local models, and everyday developer tools
+    appids:
+      list:
+      - ai.opencode.opencode
+      - com.jeffser.Alpaca
+      - ai.lmstudio.lm-studio
+      - io.github.qwersyk.Newelle
+      - dev.zed.Zed
+      - com.gitbutler.gitbutler
+      - io.github.dvlv.boxbuddyrs
+      - com.usebruno.Bruno
