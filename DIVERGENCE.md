@@ -222,3 +222,4 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 
 - **Installer launcher naming**: the live ISO launcher is "Install Wrasse" (generic bootc installer); the Dakota-named launcher is removed and the build fails if Dakota branding is left in the installer launchers. The `DAKOTA_LIVE` volume label is hardcoded upstream and unchanged.
 - **systemd-boot-unsigned in the image**: bootc's composefs backend installs systemd-boot from the image, so new installs can use it.
+- **New installs use composefs**: the live installer recipe and catalog now use `composeFsBackend` with `systemd-boot` instead of GRUB. Existing ostree installs are untouched and have no migration. NOT yet proven: the current images are still built from an ostree base, so a VM install must confirm bootc accepts them; revert is one word in `installer/iso/variant/wrasse/{composefs,bootloader}`.

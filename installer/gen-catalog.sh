@@ -33,9 +33,9 @@ jq --sort-keys '
         {
           name: "Wrasse",
           needs_user_creation: true,
-          bootloader: "grub2",
+          bootloader: "systemd",
           filesystem: "btrfs",
-          composefs: false,
+          composefs: true,
           filesystems: ["btrfs", "xfs"],
           children: (
             [ {

@@ -19,7 +19,7 @@ mapfile -t got < <(leaves "${work}/tmpl.json" | sort)
 want=$(jq -r '.lines | to_entries[] | .key as $l | ("wrasse", (if .value.nvidia then "wrasse-nvidia" else empty end)) | "ghcr.io/wrasse-os/\(.):\($l)"' "${root}/.github/build-matrix.json" | sort)
 [[ "${got[*]}" == "$(echo "${want}" | tr '\n' ' ' | sed 's/ $//')" ]] || fail "leaves ${got[*]} != matrix ${want}"
 for ref in "${got[@]}"; do [[ "${ref}" == "${ref,,}" ]] || fail "uppercase in ${ref}"; done
-jq -e '.images[0] | .bootloader == "grub2" and .composefs == false and .needs_user_creation == true' "${work}/tmpl.json" >/dev/null || fail "image defaults"
+jq -e '.images[0] | .bootloader == "systemd" and .composefs == true and .needs_user_creation == true' "${work}/tmpl.json" >/dev/null || fail "image defaults"
 
 # 2. A line with nvidia=false gets no NVIDIA leaf.
 jq '.lines.reimagined.nvidia = false' "${root}/.github/build-matrix.json" > "${work}/m.json"
