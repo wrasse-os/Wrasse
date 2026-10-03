@@ -63,6 +63,16 @@ DX (Docker, libvirt, VS Code and more) is not in the image, so it costs nothing 
 the 1.4 GB sysext that matches your booted image (network needed, signature checked) and turns it on. After each OS update run `ujust dx update`;
 until you do, DX is off on the new image and everything else works. See `docs/DX-SYSEXT.md`.
 
+## Requirements
+
+- **RAM: 8 GB minimum.** The live ISO refuses to start the installer on less (it checks usable memory, 7,000,000 kB, so real 8 GB machines
+  that lose some to the iGPU pass) and shows how much it found. To install anyway, unsupported and the installer may be killed, add
+  `wrasse.ignore_ram=1` to the kernel command line (press `e` on the boot menu entry, add it at the end of the `linux` line, `Ctrl+x`).
+- **Disk: 25 GB minimum**, the installer will not offer smaller disks.
+- **Network:** the ISO is a network install. The image is downloaded during the installation, about 5 GB compressed, so connect to the
+  internet (Wi-Fi from the live session's system menu) before you start; the installer waits on a connection check and the confirm page
+  repeats the download size before anything is written.
+
 ## Live ISO
 
 The ISO is built from the image, which no longer carries the DX sysext, so it does not grow by 1.4 GB. `installer/README.md` describes a network-install ISO that autodetects the GPU (Mesa or NVIDIA) and asks the release line: the image step lists Reimagined / Next / Stable already pointing at the detected graphics variant, and a last group, "Use different graphics drivers", offers the other variant if the detection is wrong for your GPU. You can also force the choice before boot with `wrasse.gpu=nvidia` or `wrasse.gpu=default` on the kernel command line (or from the live session: write the word to `/etc/wrasse/installer-gpu`, run `sudo /usr/libexec/wrasse-installer-config`, restart the installer). It is built by hand in
