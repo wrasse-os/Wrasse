@@ -92,3 +92,42 @@ multiplexer choice="status":
             exit 2
             ;;
     esac
+
+# Show the booted, staged and rollback images (bootc status)
+[group('System')]
+system-status:
+    #!/usr/bin/bash
+    set -euo pipefail
+
+    # bootc needs root even to read status.
+    pkexec bootc status
+
+# Boot the previous image on the next restart (bootc rollback), after showing what changes
+[group('System')]
+rollback:
+    #!/usr/bin/bash
+    set -euo pipefail
+
+    echo "Current deployments:"
+    pkexec bootc status
+    echo
+    echo "This makes the rollback deployment above the one that boots next, and the current one becomes the rollback."
+    echo "- A staged (downloaded but not yet booted) update is discarded."
+    echo "- The DX sysext (wrasse-dx.raw) is part of the image, so it rolls back with it."
+    echo "- /etc goes back to the previous deployment's state; edits made to /etc since then are not carried over."
+    echo "- Automatic updates may move you forward again; see: ujust toggle-updates"
+    echo
+
+    if command -v gum >/dev/null 2>&1; then
+        gum confirm "Roll back now?" || { echo "Cancelled."; exit 0; }
+    else
+        read -r -p "Roll back now? [y/N] " ANSWER
+        [[ "${ANSWER}" =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
+    fi
+
+    pkexec bootc rollback
+    echo
+    echo "Rollback queued. Restart to boot into it."
+    if command -v gum >/dev/null 2>&1; then
+        if gum confirm "Restart now?"; then systemctl reboot; fi
+    fi

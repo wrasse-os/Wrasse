@@ -15,6 +15,18 @@ wrasse search firefox
 wrasse sync                           # reinstall what packages.toml lists and the machine lacks
 ```
 
+```fish
+wrasse status                         # booted, staged and rollback image (bootc status, via pkexec)
+wrasse rollback                       # asks, then `pkexec bootc rollback`; restart to boot into it
+wrasse rollback --yes --apply         # no question, reboot into the rollback image right away
+```
+
+`wrasse rollback` shows the booted and rollback images first and asks `[y/N]`; with no terminal (or `--json`) it stops with
+`needs_terminal` unless you pass `--yes`. It fails with `no_rollback` when bootc has no rollback deployment. A queued rollback
+discards a staged update, the DX sysext rolls back with the image, and `/etc` reverts to the previous deployment's state
+(bootc only reorders deployments, it does not redo the `/etc` merge). `ujust rollback` and `ujust system-status` do the same
+from the shell recipes. `--dry-run` still runs the `bootc status` lookup and only records the rollback command.
+
 Global flags: `--json` prints one JSON object on stdout (errors too, for agents); `--dry-run` shows what would run (lookups still
 run). `wrasse remove` takes `--backend flatpak|brew|distrobox` or `--from <distro>` when a name is in several places, and
 `--dx` runs `ujust dx off`.

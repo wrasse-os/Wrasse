@@ -173,3 +173,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **gnome-rounded-blur on pre-release Fedora**: skipped when the COPR has no build (ublue-os/packages builds it for Fedora 44 only today), instead of failing the image. Rounded blur corners are cosmetic.
 
 - **Build pull retries**: `podman build --retry 5 --retry-delay 15s` after a quay.io CDN blob dropped mid-pull (unexpected EOF) failed the next/nvidia cell. The cell passed on re-run; the retry is hardening.
+
+- **Rollback and status UX**: added `ujust rollback` and `ujust system-status` (`60-custom.just`) and `wrasse status` / `wrasse rollback` (`cli/`), thin wrappers over `bootc status` and `bootc rollback` through `pkexec` (bootc needs root). Why: a rollback path that is one command, shows what will change and states the DX sysext and `/etc` consequences, instead of expecting users to know bootc.

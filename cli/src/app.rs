@@ -38,6 +38,20 @@ pub enum Command {
     Search(SearchArgs),
     /// Install everything in packages.toml that is missing on this machine.
     Sync,
+    /// Show the booted, staged and rollback images (`bootc status`).
+    Status,
+    /// Queue the previous image for the next boot (`bootc rollback`).
+    Rollback(RollbackArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct RollbackArgs {
+    /// Do not ask for confirmation.
+    #[arg(long, short = 'y')]
+    pub yes: bool,
+    /// Reboot into the rollback image right away (`bootc rollback --apply`).
+    #[arg(long)]
+    pub apply: bool,
 }
 
 #[derive(Args, Debug)]
@@ -197,6 +211,8 @@ pub fn run(
         Command::List => list(ctx),
         Command::Search(a) => search(ctx, a),
         Command::Sync => sync(ctx),
+        Command::Status => status(ctx),
+        Command::Rollback(a) => rollback(ctx, a, ask),
     }
 }
 
@@ -599,4 +615,120 @@ fn sync_entry(ctx: &Ctx, e: &Entry) -> Result<bool, String> {
         Backend::Distrobox => backend::distrobox_install(ctx.runner, from, &e.name, ctx.stream())?,
     };
     Ok(false)
+}
+
+/// One boot entry of `bootc status --format json` as a flat JSON object, or null when absent.
+fn boot_entry(v: &Value) -> Value {
+    if v.is_null() {
+        return Value::Null;
+    }
+    let img = &v["image"];
+    json!({
+        "image": img["image"]["image"],
+        "version": img["version"],
+        "digest": img["imageDigest"],
+    })
+}
+
+fn entry_text(label: &str, e: &Value) -> String {
+    if e.is_null() {
+        return format!("{label:<9} none\n");
+    }
+    let image = e["image"].as_str().unwrap_or("unknown image");
+    let mut line = format!("{label:<9} {image}");
+    if let Some(v) = e["version"].as_str() {
+        line.push_str(&format!(" (version {v})"));
+    }
+    if let Some(d) = e["digest"].as_str() {
+        line.push_str(&format!(" {d}"));
+    }
+    line.push('\n');
+    line
+}
+
+struct Deployments {
+    booted: Value,
+    staged: Value,
+    rollback: Value,
+    rollback_queued: bool,
+}
+
+fn deployments(ctx: &Ctx) -> Result<Deployments, CliError> {
+    let raw = backend::bootc_status(ctx.runner).map_err(backend_err)?;
+    let s = &raw["status"];
+    Ok(Deployments {
+        booted: boot_entry(&s["booted"]),
+        staged: boot_entry(&s["staged"]),
+        rollback: boot_entry(&s["rollback"]),
+        rollback_queued: s["rollbackQueued"].as_bool().unwrap_or(false),
+    })
+}
+
+fn status(ctx: &Ctx) -> Result<Report, CliError> {
+    let d = deployments(ctx)?;
+    let mut text = entry_text("booted", &d.booted);
+    text.push_str(&entry_text("staged", &d.staged));
+    text.push_str(&entry_text("rollback", &d.rollback));
+    if d.rollback_queued {
+        text.push_str("rollback is queued for the next boot\n");
+    }
+    Ok(Report {
+        data: json!({
+            "booted": d.booted,
+            "staged": d.staged,
+            "rollback": d.rollback,
+            "rollback_queued": d.rollback_queued,
+        }),
+        text: text.trim_end().to_string(),
+        ok: true,
+    })
+}
+
+fn rollback(
+    ctx: &Ctx,
+    a: &RollbackArgs,
+    ask: &mut dyn FnMut(&str) -> Option<String>,
+) -> Result<Report, CliError> {
+    let d = deployments(ctx)?;
+    if d.rollback.is_null() {
+        return Err(CliError::new(
+            "no_rollback",
+            "there is no rollback deployment on this system",
+        ));
+    }
+    let mut preview = entry_text("booted", &d.booted);
+    preview.push_str(&entry_text("rollback", &d.rollback));
+    let notes = "The rollback image boots next and the current one becomes the rollback. A staged \
+                 update is discarded. The DX sysext is part of the image and rolls back with it. \
+                 /etc returns to the previous deployment's state (bootc does not merge it again).";
+    if !a.yes && !ctx.dry() {
+        let question = format!("{preview}{notes}\nRoll back? [y/N] ");
+        let answer = ask(&question).ok_or_else(|| {
+            CliError::new(
+                "needs_terminal",
+                "rollback needs confirmation but there is no terminal to ask on. Pass --yes.",
+            )
+        })?;
+        if !matches!(answer.trim().to_lowercase().as_str(), "y" | "yes") {
+            return Err(CliError::new("cancelled", "rollback cancelled"));
+        }
+    }
+    backend::bootc_rollback(ctx.runner, a.apply, ctx.stream()).map_err(backend_err)?;
+    let msg = if a.apply {
+        "rollback queued, rebooting into it"
+    } else {
+        "rollback queued; restart to boot into it"
+    };
+    Ok(Report {
+        data: json!({
+            "action": "rollback",
+            "from": d.booted,
+            "to": d.rollback,
+            "apply": a.apply,
+            "dry_run": ctx.dry(),
+            "commands": planned(ctx),
+        }),
+        text: format!("{}\n{notes}", done_text(ctx, msg)),
+        ok: true,
+    })
 }

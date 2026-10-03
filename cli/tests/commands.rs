@@ -329,3 +329,59 @@ fn json_errors_are_machine_readable() {
     assert_eq!(e.to_json()["error"]["code"], "policy_required");
     assert_eq!(e.exit_code(), 3);
 }
+
+const BOOTC_STATUS: &str = r#"{"status":{
+  "booted":{"image":{"image":{"image":"ghcr.io/wrasse-os/wrasse:stable","transport":"registry"},"version":"stable-1","imageDigest":"sha256:aaa"}},
+  "staged":null,
+  "rollback":{"image":{"image":{"image":"ghcr.io/wrasse-os/wrasse:stable","transport":"registry"},"version":"stable-0","imageDigest":"sha256:bbb"}},
+  "rollbackQueued":false}}"#;
+
+#[test]
+fn status_summarises_bootc_json() {
+    let d = tmpdir("status");
+    let r = Runner::fake(vec![("pkexec bootc status", Output::ok(BOOTC_STATUS))]);
+    let rep = go(&d, &r, &["status", "--json"], None).unwrap();
+    assert_eq!(rep.data["booted"]["version"], "stable-1");
+    assert_eq!(rep.data["rollback"]["digest"], "sha256:bbb");
+    assert!(rep.data["staged"].is_null());
+    assert!(rep.text.contains("rollback"));
+}
+
+#[test]
+fn rollback_needs_confirmation() {
+    let d = tmpdir("rb-ask");
+    let r = Runner::fake(vec![
+        ("pkexec bootc status", Output::ok(BOOTC_STATUS)),
+        ("pkexec bootc rollback", Output::ok("")),
+    ]);
+    let err = go(&d, &r, &["rollback"], None).err().unwrap();
+    assert_eq!(err.code, "needs_terminal");
+    let err = go(&d, &r, &["rollback"], Some("n")).err().unwrap();
+    assert_eq!(err.code, "cancelled");
+    assert!(r.acted().is_empty());
+    let rep = go(&d, &r, &["rollback"], Some("y")).unwrap();
+    assert_eq!(rep.data["to"]["version"], "stable-0");
+    assert_eq!(r.acted(), vec!["pkexec bootc rollback"]);
+}
+
+#[test]
+fn rollback_yes_apply_skips_the_question() {
+    let d = tmpdir("rb-yes");
+    let r = Runner::fake(vec![
+        ("pkexec bootc status", Output::ok(BOOTC_STATUS)),
+        ("pkexec bootc rollback", Output::ok("")),
+    ]);
+    go(&d, &r, &["rollback", "--yes", "--apply"], None).unwrap();
+    assert_eq!(r.acted(), vec!["pkexec bootc rollback --apply"]);
+}
+
+#[test]
+fn rollback_without_rollback_deployment_fails() {
+    let d = tmpdir("rb-none");
+    let r = Runner::fake(vec![(
+        "pkexec bootc status",
+        Output::ok(r#"{"status":{"booted":{"image":{"image":{"image":"x"}}},"rollback":null}}"#),
+    )]);
+    let err = go(&d, &r, &["rollback", "--yes"], None).err().unwrap();
+    assert_eq!(err.code, "no_rollback");
+}

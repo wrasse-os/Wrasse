@@ -323,6 +323,26 @@ pub fn dx_toggle(r: &Runner, on: bool, stream: bool) -> Result<Output, String> {
     check("ujust dx", r.act("ujust", &["dx", state], stream)?)
 }
 
+// ---- bootc ----
+
+/// `bootc status` needs root even to read, so it goes through pkexec like `ujust dx`.
+pub fn bootc_status(r: &Runner) -> Result<serde_json::Value, String> {
+    let out = check(
+        "bootc status",
+        r.query("pkexec", &["bootc", "status", "--format", "json"])?,
+    )?;
+    serde_json::from_str(&out.stdout).map_err(|e| format!("bootc status gave invalid JSON: {e}"))
+}
+
+/// Queue the rollback deployment for the next boot; `apply` reboots into it right away.
+pub fn bootc_rollback(r: &Runner, apply: bool, stream: bool) -> Result<Output, String> {
+    let mut args = vec!["bootc", "rollback"];
+    if apply {
+        args.push("--apply");
+    }
+    check("bootc rollback", r.act("pkexec", &args, stream)?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -427,5 +447,27 @@ mod tests {
         dx_toggle(&r, true, true).unwrap();
         dx_toggle(&r, false, true).unwrap();
         assert_eq!(r.acted(), vec!["ujust dx on", "ujust dx off"]);
+    }
+
+    #[test]
+    fn bootc_status_parses_json() {
+        let r = Runner::fake(vec![(
+            "pkexec bootc status --format json",
+            Output::ok("{\"a\":1}"),
+        )]);
+        assert_eq!(bootc_status(&r).unwrap()["a"], 1);
+        let bad = Runner::fake(vec![("pkexec", Output::ok("nope"))]);
+        assert!(bootc_status(&bad).is_err());
+    }
+
+    #[test]
+    fn bootc_rollback_apply_flag() {
+        let r = Runner::fake(vec![("pkexec", Output::ok(""))]);
+        bootc_rollback(&r, false, true).unwrap();
+        bootc_rollback(&r, true, true).unwrap();
+        assert_eq!(
+            r.acted(),
+            vec!["pkexec bootc rollback", "pkexec bootc rollback --apply"]
+        );
     }
 }

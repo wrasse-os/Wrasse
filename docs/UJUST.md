@@ -10,6 +10,8 @@ deferred). `00-entry.just` imports `flutter.just` optionally; that file does not
 |---|---|
 | `ujust dx on\|off\|status` | Turns the `wrasse-dx.raw` sysext on or off. `on` links it into `/etc/extensions/`, refreshes sysext, creates the users and tmpfiles, enables the Docker/Podman/libvirt sockets and adds you to `docker` and `libvirt`; `off` reverses it. Runs `/usr/libexec/wrasse-dx` through `pkexec`. |
 | `ujust multiplexer zellij\|none\|status` | Sets or resets the custom command of your default Ptyxis profile so new tabs start Zellij (needs `brew install zellij`, done on first login). Nothing starts Zellij from fish or bash. |
+| `ujust system-status` | Shows `bootc status` (booted, staged and rollback images) through `pkexec`; bootc needs root even to read. |
+| `ujust rollback` | Shows `bootc status`, explains what changes, asks (gum, or `read` without gum) and runs `pkexec bootc rollback`; offers a restart with gum. The DX sysext rolls back with the image; `/etc` reverts to the previous deployment's state, as bootc documents. |
 | `ujust gradia-extension on\|off\|status` | Enables or disables the installed Gradia Capture GNOME Shell extension (off by default). |
 
 ## System

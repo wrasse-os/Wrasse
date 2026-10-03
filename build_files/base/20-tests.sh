@@ -92,6 +92,10 @@ grep -q "wrasse-agents.slice" /usr/bin/claude
 grep -q '^MemoryHigh=' /usr/lib/systemd/user/wrasse-agents.slice
 grep -q '^ManagedOOMMemoryPressure=kill$' /usr/lib/systemd/user/wrasse-agents.slice
 
+# Rollback and status recipes ship in the vendored ujust file.
+grep -q '^rollback:' /usr/share/ublue-os/just/60-custom.just
+grep -q '^system-status:' /usr/share/ublue-os/just/60-custom.just
+
 IMPORTANT_UNITS=(
     rpm-ostree-countme.timer
     systemd-oomd.service
