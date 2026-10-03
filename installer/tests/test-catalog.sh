@@ -89,4 +89,10 @@ cmp -s "${work}/out-bad.json" "${work}/c-wrasse.json" || fail "garbage detector 
 # 6. The recipe is valid JSON, has the installer's required keys, and keeps the image step.
 jq -e 'has("log_file") and has("distro_name") and has("distro_logo") and (.steps | has("image") and has("disk"))' "${root}/installer/iso/variant/wrasse/recipe.json" >/dev/null || fail "recipe.json"
 
+# 7. Network install: the connectivity check is the step right after welcome (its back-button handling only works
+# at carousel index 1), before image and disk, with the template name the installer registers ("conn-check").
+jq -e '.steps | keys_unsorted | .[0:2] == ["welcome", "conn_check"] and index("image") > index("conn_check") and index("disk") > index("image")' "${root}/installer/iso/variant/wrasse/recipe.json" >/dev/null || fail "recipe step order"
+jq -e '.steps.conn_check.template == "conn-check"' "${root}/installer/iso/variant/wrasse/recipe.json" >/dev/null || fail "conn_check template name"
+jq -e 'has("local_imgref") | not' "${root}/installer/iso/variant/wrasse/recipe.json" >/dev/null || fail "local_imgref would make the installer treat this as an offline install and skip conn-check"
+
 echo "ok"

@@ -12,6 +12,9 @@
       "template": "welcome",
       "protected": true
     },
+    "conn_check": {
+      "template": "conn-check"
+    },
     "image": {
       "template": "image"
     },
