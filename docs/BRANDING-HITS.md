@@ -34,7 +34,7 @@ TELEMETRY (reports to Bluefin servers, remove), ARTWORK (Bluefin imagery, never 
 | `usr/share/ublue-os/homebrew/system-flatpaks.Brewfile`, `system-dx-flatpaks.Brewfile`, `full-desktop.Brewfile`, `goose/config.yaml` | comments "for Bluefin" | reworded |
 | `usr/libexec/brew-preinstall` 181, `bootc-update-stage` 11 | comments | reworded |
 | `etc/security/pwquality.conf.d/10-pwquality.conf` 3 | comment "used by Bluefin and Utah" | reworded |
-| `etc/bazaar/curated.yaml` 11-14 | "Bluefin Recommends" banner titles (en, id, pl) | "Wrasse Recommends" (en); translations dropped |
+| `etc/bazaar/curated.yaml` 11-14 | "Bluefin Recommends" banner titles (en, id, pl) | "Wrasse Recommends" (en, id, pl name swapped) |
 | `etc/bazaar/*-bluefin-{day,night}.jxl` and their `curated.yaml` URIs | banner file names | see ARTWORK |
 | `Containerfile` 87-89, 164, 168 | stage/dir `/out/bluefin`, "bluefin image section" | renamed |
 | `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md` 24, `docs/UJUST.md`, `.github/*` | prose, templates, links, CODEOWNERS, FUNDING | GitHub meta/README commit |
@@ -53,7 +53,6 @@ TELEMETRY (reports to Bluefin servers, remove), ARTWORK (Bluefin imagery, never 
 | `usr/share/applications/io.projectbluefin.chairlift.desktop`, `icons/hicolor/*/apps/io.projectbluefin.chairlift*.svg` | app id of the vendored ChairLift flatpak/cask; renaming breaks the app. The symbolic icon is also Bluefin's raptor mark (ARTWORK) |
 | `libexec/bootc-update-stage` 3-5 | names the ChairLift polkit action id |
 | `usr/share/ublue-os/homebrew/artwork.Brewfile` | casks `ublue-os/tap/bluefin-wallpapers` and `-extra` (optional extra wallpapers from the upstream tap) |
-| `usr/share/ublue-os/just/shared.just` 16-17, 42, 53, 64 | `ghcr.io/projectbluefin/contribute` image, Hive hub endpoint, `ublue-os`-style verification of `ghcr.io/projectbluefin/*` (the `ujust contribute` recipe consumes upstream infrastructure) |
 | `usr/share/ublue-os/just/apps.just` 18, 59 | `projectbluefin/common#1170` issue references in comments |
 | `libexec/bonedigger-report` comments (98-163, 270, 567, 618) | upstream issue references in comments |
 | `usr/lib/systemd/system/rechunker-group-fix.service` 10-24 | upstream issue links in comments |
@@ -68,6 +67,7 @@ TELEMETRY (reports to Bluefin servers, remove), ARTWORK (Bluefin imagery, never 
 | --- | --- | --- |
 | `usr/libexec/projectbluefin-countme`, `usr/lib/systemd/system/projectbluefin-countme.{service,timer}`, `system-preset/03-projectbluefin-countme.preset`, `timers.target.wants/projectbluefin-countme.timer` | daily "active system" ping (image name, flavor, tag) to `countme.projectbluefin.io`. Gated to `dakota*` and `utah*` image names so it does nothing for `wrasse`, but the code and an enabled timer still ship | removed in a separate `remove:` commit |
 | `build_files/base/00-image-info.sh` 66 | at build time downloads `ublue-os/countme` badge JSON (Bluefin weekly user count) for `fastfetch` | removed; `fastfetch.jsonc` line showing it removed with it |
+| `usr/share/ublue-os/just/shared.just` 16-17, 42, 53, 64 | `ujust contribute`: runs `ghcr.io/projectbluefin/contribute`, connects to Bluefin's hosted Hive hub and hands it the user's GitHub token (user-initiated, not automatic) | removed in a `remove:` commit |
 | `build_files/base/17-cleanup.sh` 15, `20-tests.sh` 152 (`rpm-ostree-countme`) | Fedora's own countme, not Bluefin's. Reports to Fedora mirrors | not changed; UNCLEAR whether to disable (maintainer) |
 
 ## ARTWORK (Bluefin imagery; no Wrasse replacement exists)
@@ -94,3 +94,20 @@ Wrasse art exists.
 - `rpm-ostree-countme` (Fedora's own telemetry) is still enabled.
 - Existing DX sysexts built against `ID=bluefin` will not merge on an image with `ID=wrasse` (see risks in the commit log).
 - `README`/`docs` forum links: Wrasse has no forum or chat, so those links were removed rather than replaced.
+- Universal Blue wording that is not "bluefin": `uupd.timer`/`uupd-resume.timer` descriptions, the `org.ublue.privileged.user.setup`
+  polkit vendor, the `universalblue` MOK enrollment password in `default.just`, a `castrojo` comment in `70-titan-key.rules`.
+  These belong to ublue plumbing or are not branding of this image; left alone.
+
+## After the brand: series
+
+Remaining "bluefin" hits outside the three paths another agent owns: 67 text lines in 15 files and 4 tracked paths
+(the vendored ChairLift desktop file, policy file and two icons). Before: 226 text lines and 68 paths. All remaining hits are
+PLUMBING (ChairLift ids and release download, umotd/uwelcome source repos, the wallpaper image name, `ublue-os/tap` wallpaper casks,
+upstream issue references in comments), the upstream wallpaper rewrite in the Containerfile, and attribution (README, CLAUDE.md,
+AGENTS.md, docs). `ujust contribute` and the countme units and build-time fetch were removed (TELEMETRY).
+
+Artwork that still needs real Wrasse versions: logo marks in `ublue-os/wrasse-logos` (`wrasse.png`, `sixels/wrasse`,
+`symbols/wrasse` are renamed Bluefin art; chicken/dolly/karl are Bluefin mascots), the 16 Bazaar banners
+`etc/bazaar/NN-wrasse-{day,night}.jxl`, the wallpapers pulled from `bluefin-wallpapers-gnome`, `backgrounds/wrasse/wrasse-hidamari.webm`,
+`pixmaps/faces/wrasse/*.jpg`, the ChairLift raptor icons, and the `ublue-docs`/`ublue-discourse`/`ublue-logo-symbolic` icons.
+Plymouth (`spinner` theme) and the GRUB menu title carry no Bluefin text; `os-release` `PRETTY_NAME` is what GRUB shows.
