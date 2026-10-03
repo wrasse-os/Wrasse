@@ -57,9 +57,15 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/wrasse-os/wrasse:stable
 not on the old image yet; do that one with plain `bootc switch` and enforce on later switches. Check a pulled image by hand with
 `cosign verify --key cosign.pub ghcr.io/wrasse-os/wrasse:stable`.
 
+## Developer tools (DX)
+
+DX (Docker, libvirt, VS Code and more) is not in the image, so it costs nothing until you want it. After installing, `ujust dx on` downloads
+the 1.4 GB sysext that matches your booted image (network needed, signature checked) and turns it on. After each OS update run `ujust dx update`;
+until you do, DX is off on the new image and everything else works. See `docs/DX-SYSEXT.md`.
+
 ## Live ISO
 
-`installer/README.md` describes a network-install ISO that autodetects the GPU and asks the release line. It is built by hand in
+The ISO is built from the image, which no longer carries the DX sysext, so it does not grow by 1.4 GB. `installer/README.md` describes a network-install ISO that autodetects the GPU and asks the release line. It is built by hand in
 Actions ("Build Live ISO") and has not been run. The live ISO tooling boots through systemd-boot, so Secure Boot likely has to be
 off to boot the ISO; turn it on again afterwards and follow the next section.
 

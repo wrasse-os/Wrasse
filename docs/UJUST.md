@@ -8,10 +8,10 @@ deferred). `00-entry.just` imports `flutter.just` optionally; that file does not
 
 | Recipe | What it does |
 |---|---|
-| `ujust dx on\|off\|status` | Turns the `wrasse-dx.raw` sysext on or off. `on` links it into `/etc/extensions/`, refreshes sysext, creates the users and tmpfiles, enables the Docker/Podman/libvirt sockets and adds you to `docker` and `libvirt`; `off` reverses it. Runs `/usr/libexec/wrasse-dx` through `pkexec`. |
+| `ujust dx on\|off [purge]\|update\|status` | The developer sysext, downloaded on demand (it is not in the image). `on` downloads the `wrasse-dx.raw` that matches the booted image (about 1.4 GB, needs network, signature checked against `wrasse.pub`), enables `wrasse-dx-select.service` so only that file is linked into `/var/lib/extensions`, refreshes sysext, creates the users and tmpfiles, enables the Docker/Podman/libvirt sockets and adds you to `docker` and `libvirt`. `update` fetches the match for the booted and any staged image and re-merges; run it after an image update (DX stays off until then). `off` reverses `on` (`off purge` also deletes the downloads). Runs `/usr/libexec/wrasse-dx` through `pkexec`; see `docs/DX-SYSEXT.md`. |
 | `ujust multiplexer zellij\|none\|status` | Sets or resets the custom command of your default Ptyxis profile so new tabs start Zellij (needs `brew install zellij`, done on first login). Nothing starts Zellij from fish or bash. |
 | `ujust system-status` | Shows `bootc status` (booted, staged and rollback images) through `pkexec`; bootc needs root even to read. |
-| `ujust rollback` | Shows `bootc status`, explains what changes, asks (gum, or `read` without gum) and runs `pkexec bootc rollback`; offers a restart with gum. The DX sysext rolls back with the image; `/etc` reverts to the previous deployment's state, as bootc documents. |
+| `ujust rollback` | Shows `bootc status`, explains what changes, asks (gum, or `read` without gum) and runs `pkexec bootc rollback`; offers a restart with gum. DX follows the image: after the rollback it uses the sysext already downloaded for that image, else run `ujust dx update`; `/etc` reverts to the previous deployment's state, as bootc documents. |
 | `ujust gradia-extension on\|off\|status` | Enables or disables the installed Gradia Capture GNOME Shell extension (off by default). |
 
 ## System

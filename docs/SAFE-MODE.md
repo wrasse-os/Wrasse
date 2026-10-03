@@ -1,14 +1,15 @@
 # Safe mode: boot with all sysexts off
 
-If the DX sysext (`wrasse-dx.raw`) breaks boot or the desktop, you can boot once without it, then fix it from a working session.
+If the DX sysext (`wrasse-dx.raw`, downloaded by `ujust dx on`) breaks boot or the desktop, you can boot once without it, then fix it from a working session.
 
 ## What it does
 
 `/usr/lib/systemd/system/systemd-sysext.service.d/10-wrasse-safe-mode.conf` adds `ConditionKernelCommandLine=!wrasse.safe=1` to
 `systemd-sysext.service`. With `wrasse.safe=1` on the kernel command line the unit is skipped, so nothing under
-`/etc/extensions`, `/run/extensions` or `/var/lib/extensions` is merged into `/usr` for that boot. The condition is a plain (non
+`/etc/extensions`, `/run/extensions` or `/var/lib/extensions` is merged into `/usr` for that boot. `wrasse-dx-select.service`, which links the
+downloaded sysext into `/var/lib/extensions`, carries the same condition, so in safe mode it neither links nor removes anything. The condition is a plain (non
 `|`) one, so it is ANDed with the unit's existing "directory not empty" OR group (see `systemctl cat systemd-sysext.service`).
-The `ujust dx` symlink in `/etc/extensions` is left alone, so the next normal boot merges DX again.
+The link in `/var/lib/extensions` and the cached file are left alone, so the next normal boot merges DX again.
 
 ## Use it (one boot)
 
@@ -21,7 +22,7 @@ The edit is not saved; the next reboot is normal.
 
 ## Make it permanent
 
-Turn DX off with `ujust dx off` (removes the `/etc/extensions/wrasse-dx.raw` link). Do not use `ujust dx on` or `systemd-sysext
+Turn DX off with `ujust dx off` (disables the selector and removes the `/var/lib/extensions/wrasse-dx.raw` link; `ujust dx off purge` also deletes the download). Do not use `ujust dx on` or `systemd-sysext
 refresh` while in safe mode: they merge the sysext into the running system regardless of the kernel argument.
 
 Other ways to get a sysext-free boot were not chosen: `systemd.mask=systemd-sysext.service` works too but needs a longer argument and

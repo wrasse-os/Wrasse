@@ -65,10 +65,10 @@ Which backend is for what:
 ## DX (developer toolchain)
 
 Docker, Podman extras, libvirt/QEMU, VS Code, perf tools (bcc, bpftrace, sysstat), GNOME/GTK dev headers and waydroid are a
-systemd-sysext, not part of the base image. It ships inside the image and is off by default.
+systemd-sysext, not part of the base image. It is downloaded on demand (about 1.4 GB, needs network) and is off by default.
 
-- `ujust dx status`, `ujust dx on`, `ujust dx off` (`on` and `off` need root through pkexec, and `on` adds the user to
-  the docker and libvirt groups, which needs a re-login to take effect).
+- `ujust dx status`, `ujust dx on`, `ujust dx off`, `ujust dx update` (`on`, `off` and `update` need root through pkexec, and `on` adds the user to
+  the docker and libvirt groups, which needs a re-login to take effect). After an OS update DX stays off until `ujust dx update`.
 - If a task needs Docker, libvirt or the dev headers, check `ujust dx status` first and ask the user before turning it on.
 
 ## Terminal

@@ -42,6 +42,12 @@ If an image does not exist for that Fedora version and kernel, or verification f
 Its tag keeps pointing at the last good image. Other cells are unaffected (`fail-fast: false`); the `Summary` job turns the
 run red so the failure is visible.
 
+## DX sysext artifact
+
+After an image is pushed, signed and attested, each cell builds the DX sysext from it and publishes `ghcr.io/wrasse-os/wrasse-dx:<image-id>-<IMAGE_VERSION>`
+(plus `-<line>` and `-f<fedora>` aliases) with `.github/scripts/publish-dx.sh`; see `docs/DX-SYSEXT.md`. A failure there turns that cell red with an error
+annotation and a "DX sysext UNAVAILABLE" summary but never blocks or undoes the image. Pull requests build the sysext and never publish it.
+
 ## Pre-release codecs (Fedora 45)
 
 negativo17's `fedora-multimedia` repo is used for mesa, libva, libheif, the Intel media stack, `libfdk-aac` and `pipewire-libs-extra`, and for

@@ -6,7 +6,7 @@ Nothing here has been created. The workflow `.github/workflows/build.yml` reads 
 
 | Name | Required | What it is |
 |---|---|---|
-| `SIGNING_SECRET` | yes, for any push to `main`/schedule/dispatch | The cosign **private key** file contents (`cosign.key`). Used by `cosign sign --key env://COSIGN_PRIVATE_KEY` on every image and on every SBOM. |
+| `SIGNING_SECRET` | yes, for any push to `main`/schedule/dispatch | The cosign **private key** file contents (`cosign.key`). Used by `cosign sign --key env://COSIGN_PRIVATE_KEY` on every image, every SBOM and every DX sysext artifact. |
 | `COSIGN_PASSWORD` | yes if the key has a password; otherwise create it empty or leave it unset | The password cosign needs to decrypt `SIGNING_SECRET`. The workflow passes it as `COSIGN_PASSWORD`. |
 
 `GITHUB_TOKEN` is automatic (push to GHCR, SBOM upload, attestations use OIDC). No personal access token is needed.
@@ -33,7 +33,10 @@ Do not commit `cosign.key`.
    projectbluefin/common#1194); CI signs with the key, so the policy is key-based.
 3. After the first push each package (`wrasse`, `wrasse-nvidia`) is created private. Set it public (Package settings, Change
    visibility) and under "Manage Actions access" make sure the `Wrasse` repository has Write access.
-4. Actions settings: workflow permissions can stay "Read repository contents"; the workflow requests `packages: write`,
+4. The DX sysext artifact (`ghcr.io/wrasse-os/wrasse-dx`, pushed by `build.yml` with oras and signed with the same key) is a third package, created private
+   on its first push. Set it public as above (it must be anonymously pullable: `ujust dx on` has no credentials), and give the `Wrasse` repository Write access.
+   Until then `ujust dx on` fails with an authorization error. Old tags are not deleted automatically.
+5. Actions settings: workflow permissions can stay "Read repository contents"; the workflow requests `packages: write`,
    `id-token: write`, `attestations: write` per job.
 
 ## What is verified with keys that are not yours

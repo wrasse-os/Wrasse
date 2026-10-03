@@ -14,8 +14,8 @@ GNOME desktop built as a Fedora bootc image. Images are published to `ghcr.io/wr
   but off (`ujust gradia-extension on`).
 - fish is the default login shell for new users. No bash "bling", no starship. Zellij is installed from brew on first login and is
   opt-in as the Ptyxis shell (`ujust multiplexer zellij`).
-- Developer tools are not an image. `ujust dx on` merges the `wrasse-dx.raw` systemd-sysext (Docker, libvirt/QEMU, VS Code, perf
-  tools, GNOME/GTK dev headers, waydroid) that ships inside every image.
+- Developer tools are not an image. `ujust dx on` downloads the matching, signed `wrasse-dx.raw` systemd-sysext (Docker, libvirt/QEMU, VS Code, perf
+  tools, GNOME/GTK dev headers, waydroid; about 1.4 GB, so it is not in the image or the ISO) and merges it.
 - Memory tuning: zram with recompression, DAMON reclaim, MGLRU and VM sysctls.
 - Claude Code integration: a system skill, a lazy `claude` stub that offers Anthropic's official installer, and a
   `wrasse-agents.slice` so systemd-oomd kills a runaway agent instead of freezing the desktop. See `docs/AGENT-SLICE.md`.

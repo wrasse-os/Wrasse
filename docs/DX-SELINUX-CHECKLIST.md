@@ -1,7 +1,7 @@
 # DX sysext: SELinux and bring-up checklist
 
-Nothing here has been run. The DX sysext (`wrasse-dx.raw`) was written without a build, so every item below is a
-check for you on a booted Wrasse image with SELinux **enforcing** (`getenforce` prints `Enforcing`). Commands are fish.
+Nothing here has been run. The DX sysext (`wrasse-dx.raw`) is downloaded by `ujust dx on` (it is not in the image) and was written
+without a build, so every item below is a check for you on a booted Wrasse image with SELinux **enforcing** (`getenforce` prints `Enforcing`). Commands are fish.
 
 Keep a second terminal on `journalctl -f` and a third on `sudo ausearch -m avc -ts recent` (or `sudo journalctl -t setroubleshoot`)
 as you go. Any AVC denial is a finding: note the `scontext`, `tcontext`, `tclass` and the path.
@@ -18,17 +18,18 @@ If DX breaks boot, see `docs/SAFE-MODE.md` (`wrasse.safe=1` at the GRUB menu).
 - Waydroid needs `binder_linux`/binderfs support from the kernel and may not work at all on the Fedora kernel. Treat a failure
   there as expected until proven otherwise.
 
-## 1. Image and sysext sanity (before `ujust dx on`)
+## 1. Image sanity (before `ujust dx on`)
 
 ```fish
-ls -l /usr/share/wrasse/sysexts/
-cat /usr/share/wrasse/sysexts/wrasse-dx.extension-release
-grep -E '^(ID|VERSION_ID)=' /usr/lib/os-release
+grep -E '^(ID|VERSION_ID|IMAGE_ID|IMAGE_VERSION)=' /usr/lib/os-release
+ls /usr/share/wrasse/sysexts   # must not exist
 systemd-sysext status
+ujust dx status
 ```
 
-- [ ] `wrasse-dx.raw` and `wrasse-dx.extension-release` exist; `ID` and `VERSION_ID` match os-release.
-- [ ] `/etc/extensions/` has no `wrasse-dx.raw` yet; `docker` and `code` are not on `PATH` (DX is off by default).
+- [ ] `IMAGE_ID` and `IMAGE_VERSION` are set; there is no `/usr/share/wrasse/sysexts` (the image does not carry DX).
+- [ ] `/var/lib/extensions/` has no `wrasse-dx.raw` yet; `docker` and `code` are not on `PATH` (DX is off by default); `ujust dx status` says `cached: no`.
+- [ ] The package `ghcr.io/wrasse-os/wrasse-dx` is public (see `docs/CI-SECRETS.md`) and has a tag `<IMAGE_ID>-<IMAGE_VERSION>` for this image.
 
 ## 2. Turn it on
 
@@ -37,7 +38,14 @@ ujust dx on
 ujust dx status
 ```
 
-- [ ] `ujust dx on` finishes without errors and says to log out. `merged: yes` in `ujust dx status`.
+- [ ] `ujust dx on` downloads about 1.4 GB, finishes without errors and says to log out. `merged: yes` in `ujust dx status`.
+- [ ] `/var/lib/wrasse/sysexts/<IMAGE_ID>-<IMAGE_VERSION>/` holds `wrasse-dx.raw` and `wrasse-dx.extension-release` (`ID` and `VERSION_ID` match
+      os-release) and `/var/lib/extensions/wrasse-dx.raw` links to it.
+- [ ] Labels of the on-demand paths: `ls -dZ /var/lib/wrasse /var/lib/wrasse/sysexts /var/lib/extensions` and `ls -lZ /var/lib/extensions/`; no AVC from
+      `systemd-sysext` or `init_t` reading the linked file (a `var_lib_t` file behind a symlink in `/var/lib/extensions` is the thing to watch).
+- [ ] Signature enforcement: with the network up, `skopeo --policy /usr/share/wrasse/dx/policy.json --registries.d /usr/share/wrasse/dx/registries.d inspect --no-tags docker://ghcr.io/wrasse-os/wrasse-dx:<IMAGE_ID>-<IMAGE_VERSION>`
+      succeeds, and the same with `--policy` pointing at a policy using another key fails.
+- [ ] `systemctl is-enabled wrasse-dx-select.service` says `enabled`; `ujust dx on` a second time says the sysext is already downloaded.
 - [ ] `systemd-sysext status` lists `wrasse-dx` under `/usr`.
 - [ ] `journalctl -b -u systemd-sysext` has no mount errors, and no AVC for `systemd-sysext` or `loop`.
 
@@ -145,16 +153,20 @@ systemctl reboot
 
 After the reboot:
 
-- [ ] `ujust dx status` says `merged: yes` without you doing anything (the `/etc/extensions` link persisted).
+- [ ] `ujust dx status` says `merged: yes` without you doing anything (`wrasse-dx-select.service` re-linked the cached file before `systemd-sysext.service`;
+      `journalctl -b -u wrasse-dx-select.service`).
 - [ ] `docker.socket` and `virtqemud.socket` are active; no failed units (`systemctl --failed`).
 
 ## 10. Update and rollback
 
-- [ ] `sudo bootc upgrade`, reboot. DX is still on and `systemd-sysext status` shows the new image's sysext (check
-      `cat /usr/share/wrasse/sysexts/wrasse-dx.extension-release` against `os-release`).
-- [ ] After a Fedora major bump the old sysext must **not** merge (VERSION_ID mismatch) and the new image carries a matching
-      one. Verify with `journalctl -b -u systemd-sysext`.
-- [ ] `sudo bootc rollback`, reboot: DX rolled back with the image.
+- [ ] `sudo bootc upgrade`, then `ujust dx update` before rebooting: it also downloads the sysext of the staged image (`ujust dx status` after the
+      reboot says `cached: yes`). Reboot: DX is still on and `systemd-sysext status` shows the new image's sysext.
+- [ ] Upgrade again and reboot **without** `ujust dx update`: DX is off (`merged: no`, no `/var/lib/extensions/wrasse-dx.raw`, the selector logs
+      "no cached DX sysext"), the system boots normally, and `ujust dx update` brings it back.
+- [ ] After a Fedora major bump the old sysext must **not** merge (it is not even linked: different `IMAGE_VERSION`). Verify with
+      `journalctl -b -u wrasse-dx-select.service -u systemd-sysext`.
+- [ ] `sudo bootc rollback`, reboot: DX uses the rollback image's cached file (if `ujust dx update` pruned it, `ujust dx update` fetches it again).
+- [ ] Offline (network off): `ujust dx on` with nothing cached fails with the "needs network" message and changes nothing; with the file cached it succeeds.
 
 ## 11. Turn it off
 
@@ -165,7 +177,8 @@ ujust dx status
 ls /var/lib/docker | head -3
 ```
 
-- [ ] `merged: no`; `docker` and `code` are gone from `PATH`; the units are disabled (`systemctl is-enabled docker.socket` fails).
+- [ ] `merged: no`; `docker` and `code` are gone from `PATH`; the units are disabled (`systemctl is-enabled docker.socket` fails);
+      `systemctl is-enabled wrasse-dx-select.service` fails and `/var/lib/extensions/wrasse-dx.raw` is gone; the cache is still there until `ujust dx off purge`.
 - [ ] If it says something under `/usr` is still in use, close VS Code and any containers, then reboot. The link is already
       removed, so DX will be off after the reboot.
 - [ ] `/var/lib/docker` and `/var/lib/libvirt` still exist. Turning DX on again finds them and everything still works.

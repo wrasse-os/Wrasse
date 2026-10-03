@@ -8,7 +8,7 @@ distrobox for anything that needs another distro, and `ujust dx` for the develop
 wrasse install org.gnome.Loupe        # GUI app: Flatpak (user installation, flathub)
 wrasse install ripgrep                # CLI tool: brew formula
 wrasse install htop --from ubuntu     # distrobox container wrasse-ubuntu
-wrasse install --dx                   # runs `ujust dx on`
+wrasse install --dx                   # runs `ujust dx on` (downloads the DX sysext; needs network)
 wrasse remove ripgrep
 wrasse list
 wrasse search firefox
@@ -23,7 +23,7 @@ wrasse rollback --yes --apply         # no question, reboot into the rollback im
 
 `wrasse rollback` shows the booted and rollback images first and asks `[y/N]`; with no terminal (or `--json`) it stops with
 `needs_terminal` unless you pass `--yes`. It fails with `no_rollback` when bootc has no rollback deployment. A queued rollback
-discards a staged update, the DX sysext rolls back with the image, and `/etc` reverts to the previous deployment's state
+discards a staged update, DX follows the image (it uses the sysext downloaded for the rolled-back image, else run `ujust dx update`), and `/etc` reverts to the previous deployment's state
 (bootc only reorders deployments, it does not redo the `/etc` merge). `ujust rollback` and `ujust system-status` do the same
 from the shell recipes. `--dry-run` still runs the `bootc status` lookup and only records the rollback command.
 

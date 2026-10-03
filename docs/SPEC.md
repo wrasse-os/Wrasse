@@ -11,7 +11,7 @@ Working rules live in `/CLAUDE.md`. Change log lives in `/DIVERGENCE.md`.
 | 0 | Recon + spec | done |
 | 1 | Base image changes | done (except `brand:`, deferred by the user) |
 | 2 | CI + release lines | partial: implemented, 2 items blocked (see "Phase 2 status notes") |
-| 3 | DX as a sysext | partial: implemented, not built or booted; needs CI size report and the SELinux checklist (see "Phase 3 status notes") |
+| 3 | DX as a sysext | partial: implemented (downloaded on demand, not baked in), not built or booted; needs a CI run (publish) and the SELinux checklist (see "Phase 3 status notes") |
 | 4 | Terminal (Zellij, multiplexer) | done (not run on hardware; see "Phase 4 status notes") |
 | 5 | Claude Code integration | partial: implemented and verified where possible, gating blocked on pending decision 2 (see "Phase 5 status notes") |
 | 6 | `wrasse install` (Rust CLI) | partial: implemented and unit tested, Flatpak-vs-brew policy blocked on pending decision 1 (see "Phase 6 status notes") |
@@ -138,22 +138,33 @@ DX is NOT an image. Build `wrasse-dx.raw` (systemd-sysext, erofs) in the same CI
 extension-release matching that image's os-release (ID + VERSION_ID).
 Contents: Docker (engine, compose, buildx), Podman extras, libvirt/QEMU, VS Code, perf tools (bcc, bpftrace, sysstat, etc.),
 GNOME/GTK dev headers (mutter-devel, gjs-devel, gtk4-devel, libadwaita-devel), waydroid. See github.com/fedora-sysexts/fedora.
-Bake it into the image at `/usr/share/wrasse/sysexts/` (NOT an auto-load path), in its own late Containerfile layer so
-bootc's chunked pulls only redownload it when DX changes. Report the final size.
-`ujust dx on`: symlink into `/etc/extensions/`, `systemd-sysext refresh`, `systemctl daemon-reload`, enable the needed
-units/sockets, add the user to required groups. `ujust dx off` reverses all of it.
-No systemd-sysupdate anywhere. bootc delivers the sysext with the image, so rollback rolls it back too.
+~~Bake it into the image at `/usr/share/wrasse/sysexts/`~~ **Superseded (user decision, 2026-10-03): DX is downloaded on demand, not baked in.**
+The measured `wrasse-dx.raw` is 1.4 GB; baking it in made every user download it on every image pull and bloated the live ISO.
+CI publishes it as a cosign-signed OCI artifact `ghcr.io/wrasse-os/wrasse-dx:<IMAGE_ID>-<IMAGE_VERSION>` (aliases `-<line>`, `-f<fedora>`).
+`ujust dx on`: download the artifact that matches the booted image (signature checked against `wrasse.pub`), cache it under
+`/var/lib/wrasse/sysexts/`, enable `wrasse-dx-select.service` (links only the matching file into `/var/lib/extensions/` before
+`systemd-sysext.service`), `systemd-sysext refresh`, `systemctl daemon-reload`, enable the needed units/sockets, add the user to required
+groups. `ujust dx update` fetches the match after an image update. `ujust dx off` reverses all of it.
+No systemd-sysupdate anywhere (the download is skopeo plus a selector unit, not sysupdate). bootc no longer delivers the sysext, but the
+match is per image: rollback finds the old image's cached file, and an image update leaves DX off until `ujust dx update`.
 Flag SELinux risks: Docker and libvirt must work with SELinux enforcing after merge. Write a test checklist for the user.
 File map: `build_files/dx/*`, `build_files/shared/build-dx.sh`, `system_files/dx/**` (move what is still needed into the
 sysext or shared files), `Containerfile`, new `ujust` recipe (vendored `system_files/shared/usr/share/ublue-os/just/`), CI.
 
 ### Phase 3 status notes
 
-Done (written, nothing built or booted): `build_files/dx/build-sysext.sh` builds `wrasse-dx.raw` in Containerfile stage `dx-build`
-(FROM `base`); stage `final` copies it, plus a plain-text `wrasse-dx.extension-release`, to `/usr/share/wrasse/sysexts/` as the last
-layer; `test-sysext.sh` asserts the extension-release ID and VERSION_ID equal os-release; `ujust dx on|off|status` in
-`60-custom.just` with the root helper `/usr/libexec/wrasse-dx`; the old image path and `system_files/dx` are gone;
-`docs/DX-SELINUX-CHECKLIST.md` is the test list for you; CI step "Report DX sysext size" prints the size. No systemd-sysupdate anywhere.
+Done (written, nothing built or booted): `build_files/dx/build-dx.sh` builds `wrasse-dx.raw` plus `wrasse-dx.extension-release` from the finished
+image (`Containerfile.dx` + `build-sysext.sh`, or mkosi) and `test-sysext.sh` asserts the extension-release ID and VERSION_ID equal the image's
+os-release; `build.yml` publishes it after the image with `.github/scripts/publish-dx.sh` (oras, cosign, skopeo read-back); `ujust dx
+on|off [purge]|update|status` in `60-custom.just` with the root helper `/usr/libexec/wrasse-dx`, `wrasse-dx-select` and `wrasse-dx-select.service`;
+the old image path and `system_files/dx` are gone; `docs/DX-SELINUX-CHECKLIST.md` is the test list for you; the job summary prints the size.
+No systemd-sysupdate anywhere. Flow and tags: `docs/DX-SYSEXT.md`.
+
+**Decision record (2026-10-03):** DX on demand instead of baked in, because of the 1.4 GB. Consequences: the image and the live ISO shrink by that
+much (nothing in `installer/` or `build-iso.yml` referenced the file); the first `dx on` and every `dx update` need network; an image update disables
+DX until `dx update` (or `dx update` before the reboot, which also fetches the staged image's sysext); a DX build or publish failure in CI leaves the
+image published and DX unavailable for that build, reported as a red cell, an error annotation and a summary; the package `wrasse-dx` must be made
+public once (`docs/CI-SECRETS.md`). Kernel, FUSE and the rest of the image are unaffected.
 
 Findings and choices (verified against github.com/fedora-sysexts/fedora and the Fedora repos on 2026-10-02):
 - fedora-sysexts writes `ID="_any"` into extension-release because pinning `ID=fedora` breaks Universal Blue images (this image's ID is
@@ -163,8 +174,7 @@ Findings and choices (verified against github.com/fedora-sysexts/fedora and the 
   branched Fedora. If you want docker-ce back, only `PACKAGES` and a repo file in `build-sysext.sh` change.
 - Not in the spec list, so dropped: Incus/LXC, ROCm, android-tools, the vfio dracut file (cannot live in a sysext). See `DIVERGENCE.md`.
 - Final size is unknown without a build. The first CI run prints it per cell in the job summary.
-- bootc chunked pulls: the sysext is the last, single layer so a DX-only change redownloads that layer. Whether the rechunk step keeps it as
-  a separate chunk was not verified; check the pushed image's layers after the first CI run.
+- (Obsolete after the on-demand decision: the bootc chunked-layer question no longer applies; the image has no sysext layer.)
 - Open risks needing real hardware: sysext merge on composefs root, build-time SELinux labels (`mkfs.erofs --file-contexts`),
   `restorecon`-clean state after merge, Docker and libvirt under enforcing, waydroid kernel support (binder).
 - `ujust devmode` (brew based dev tools) and `system-dx-flatpaks.Brewfile` were not touched; they are a separate user-space path.
