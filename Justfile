@@ -212,17 +212,15 @@ build $image="wrasse" $tag="reimagined" $flavor="default" rechunk="0" ghcr="0" p
     LABELS+=("--label" "org.opencontainers.image.title=${image_name}")
     LABELS+=("--label" "org.opencontainers.image.version=${ver}")
     LABELS+=("--label" "ostree.linux=${KERNEL}")
-    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/README.md")
-    LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
-    LABELS+=("--label" "org.opencontainers.image.description=The next generation Linux workstation, designed for reliability, performance, and sustainability.")
+    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/wrasse-os/Wrasse/refs/heads/main/README.md")
+    LABELS+=("--label" "org.opencontainers.image.description=An agent-first, opinionated GNOME desktop built as a Fedora bootc image.")
     LABELS+=("--label" "containers.bootc=1")
     LABELS+=("--label" "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)")
-    LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/Containerfile")
-    LABELS+=("--label" "org.opencontainers.image.url=https://projectbluefin.io")
+    LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/wrasse-os/Wrasse/refs/heads/main/Containerfile")
+    LABELS+=("--label" "org.opencontainers.image.url=https://github.com/wrasse-os/Wrasse")
     LABELS+=("--label" "org.opencontainers.image.vendor={{ repo_organization }}")
     LABELS+=("--label" "io.artifacthub.package.deprecated=false")
-    LABELS+=("--label" "io.artifacthub.package.keywords=bootc,bluefin,ublue,universal-blue")
-    LABELS+=("--label" "io.artifacthub.package.maintainers=[{\"name\": \"castrojo\", \"email\": \"jorge.castro@gmail.com\"}]")
+    LABELS+=("--label" "io.artifacthub.package.keywords=bootc,fedora,gnome,wrasse")
 
     echo "::endgroup::"
     echo "::group:: Build Container"
@@ -326,15 +324,13 @@ rechunk $image="wrasse" $tag="reimagined" $flavor="default" ghcr="0" pipeline="0
     # Rest of Labels
     LABELS="
         io.artifacthub.package.deprecated=false
-        io.artifacthub.package.keywords=bootc,fedora,bluefin,ublue,universal-blue
-        io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4
-        io.artifacthub.package.maintainers=[{\"name\": \"castrojo\", \"email\": \"jorge.castro@gmail.com\"}]
-        io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/README.md
+        io.artifacthub.package.keywords=bootc,fedora,gnome,wrasse
+        io.artifacthub.package.readme-url=https://raw.githubusercontent.com/wrasse-os/Wrasse/refs/heads/main/README.md
         org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)
         org.opencontainers.image.license=Apache-2.0
-        org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/Containerfile
+        org.opencontainers.image.source=https://raw.githubusercontent.com/wrasse-os/Wrasse/refs/heads/main/Containerfile
         org.opencontainers.image.title=${image_name}
-        org.opencontainers.image.url=https://projectbluefin.io
+        org.opencontainers.image.url=https://github.com/wrasse-os/Wrasse
         org.opencontainers.image.vendor={{ repo_organization }}
         ostree.linux=$(${SUDOIF} ${PODMAN} inspect $CREF | jq -r '.[].Config.Labels["ostree.linux"]')
         containers.bootc=1
