@@ -9,6 +9,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 install -Dm755 "${here}/wrasse-gpu-detect" /usr/bin/wrasse-gpu-detect
 install -Dm755 "${here}/wrasse-installer-config" /usr/libexec/wrasse-installer-config
+install -Dm755 "${here}/wrasse-installer-preflight" /usr/libexec/wrasse-installer-preflight
 install -Dm644 "${here}/images.wrasse.json" /usr/share/wrasse/installer/images.wrasse.json
 install -Dm644 "${here}/images.wrasse-nvidia.json" /usr/share/wrasse/installer/images.wrasse-nvidia.json
 install -Dm644 "${here}/wrasse-installer-config.service" /usr/lib/systemd/system/wrasse-installer-config.service
@@ -34,6 +35,10 @@ for f in /etc/xdg/autostart/tuna-installer.desktop \
         echo "leftover Dakota branding in ${f}" >&2
         exit 1
     fi
+    # Both launchers run the RAM preflight first; it execs the original command unchanged.
+    grep -q '^Exec=' "${f}"
+    sed -i -e 's|^Exec=\(.*\)$|Exec=/usr/libexec/wrasse-installer-preflight \1|' "${f}"
+    grep -q '^Exec=/usr/libexec/wrasse-installer-preflight [^ ]' "${f}"
 done
 
 # The tooling pins `dakota-installer.desktop` in the dock (now removed above), but the running installer window's app id is

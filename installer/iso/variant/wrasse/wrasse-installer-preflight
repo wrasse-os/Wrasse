@@ -1,0 +1,95 @@
+#!/usr/bin/bash
+# Live ISO launcher wrapper: refuse to start the installer on a machine with too little RAM, else
+# exec the original installer command (passed as arguments).
+#
+# Why: the live session runs from RAM and the installer pulls and unpacks a multi-GB image; on a 4 GB machine the
+# live session's OOM handling kills the installer partway. The upstream installer has no such check.
+#
+# Threshold: MemTotal (kB) from /proc/meminfo must be at least 7,000,000 kB (about 6.68 GiB). MemTotal is what
+# the kernel can use, not what is on the label: an "8 GB" machine (8,388,608 kB) reports roughly 7.0 to 7.7 GiB
+# (7.3 to 8.1 million kB) after firmware, iGPU and crashkernel reservations, so 7,000,000 admits real 8 GB machines
+# with up to ~1.3 GiB reserved and still refuses 6 GB (~5.7 GiB) and 4 GB (~3.8 GiB) ones.
+#
+# Escape hatch: wrasse.ignore_ram=1 on the kernel command line skips the check (unsupported, the install may be killed).
+#
+# Test hooks: WRASSE_MEMINFO (default /proc/meminfo), WRASSE_CMDLINE (default /proc/cmdline), WRASSE_PREFLIGHT_DIALOG
+# (default zenity; the command that shows the message). Sourcing this file only defines the functions.
+set -euo pipefail
+
+WRASSE_MIN_RAM_KB=7000000
+
+# meminfo_total_kb [file]: MemTotal in kB, or exit 1 when unreadable or not a number.
+meminfo_total_kb() {
+    local file="${1:-${WRASSE_MEMINFO:-/proc/meminfo}}" kb
+    kb="$(awk '$1 == "MemTotal:" { print $2; exit }' "${file}" 2>/dev/null)" || return 1
+    [[ "${kb}" =~ ^[0-9]+$ ]] || return 1
+    echo "${kb}"
+}
+
+# ram_sufficient <kb>: success when kb meets the minimum.
+ram_sufficient() {
+    [[ "${1}" =~ ^[0-9]+$ ]] && (( ${1} >= WRASSE_MIN_RAM_KB ))
+}
+
+# ignore_ram_requested [cmdline file]: success when wrasse.ignore_ram=1 is a whole word on the command line.
+ignore_ram_requested() {
+    local file="${1:-${WRASSE_CMDLINE:-/proc/cmdline}}" word
+    # shellcheck disable=SC2046
+    for word in $(cat "${file}" 2>/dev/null || true); do
+        [[ "${word}" == "wrasse.ignore_ram=1" ]] && return 0
+    done
+    return 1
+}
+
+# gib_text <kb>: one decimal GiB, e.g. 3.8
+gib_text() {
+    awk -v kb="${1}" 'BEGIN { printf "%.1f", kb / 1048576 }'
+}
+
+# ram_message <kb>: the text shown to the user.
+ram_message() {
+    local found
+    found="$(gib_text "${1}")"
+    cat <<MSG
+Wrasse needs at least 8 GB of RAM to install. This computer has ${found} GiB of usable memory.
+
+The live session runs from memory and the installer downloads and unpacks several GB, so with less RAM the installer is stopped partway.
+
+To install anyway (not supported), restart the live ISO and add wrasse.ignore_ram=1 to the kernel command line: press e on the boot menu entry, add it at the end of the linux line, then boot with Ctrl+x.
+MSG
+}
+
+show_message() { # <text>
+    local dialog="${WRASSE_PREFLIGHT_DIALOG:-zenity}"
+    printf '%s\n' "${1}" >&2
+    if [[ "${dialog}" == zenity ]]; then
+        command -v zenity >/dev/null 2>&1 || return 0
+        zenity --error --no-markup --title="Not enough memory" --width=480 --text="${1}" || true
+    else
+        "${dialog}" "${1}" || true
+    fi
+}
+
+preflight_main() {
+    if (( $# == 0 )); then
+        echo "usage: wrasse-installer-preflight <installer command> [args...]" >&2
+        return 2
+    fi
+    local kb
+    if ignore_ram_requested; then
+        echo "wrasse-installer-preflight: wrasse.ignore_ram=1, skipping the RAM check" >&2
+    elif kb="$(meminfo_total_kb)"; then
+        if ! ram_sufficient "${kb}"; then
+            show_message "$(ram_message "${kb}")"
+            return 1
+        fi
+    else
+        # Cannot read MemTotal: do not block an install on a broken probe.
+        echo "wrasse-installer-preflight: cannot read MemTotal, continuing" >&2
+    fi
+    exec "$@"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    preflight_main "$@"
+fi

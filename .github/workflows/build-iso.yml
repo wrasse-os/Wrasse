@@ -72,8 +72,10 @@ jobs:
           set -euo pipefail
           shellcheck -x -S warning installer/gen-catalog.sh installer/gen-nvidia-ids.sh installer/iso/pin-installer.sh \
             installer/iso/variant/wrasse/configure-live.d.sh installer/iso/variant/wrasse/wrasse-installer-config \
-            installer/tests/test-catalog.sh
+            installer/tests/test-catalog.sh installer/tests/test-preflight.sh \
+            installer/iso/variant/wrasse/wrasse-installer-preflight
           installer/tests/test-catalog.sh
+          installer/tests/test-preflight.sh
           (cd installer/gpu-detect && cargo test --locked)
 
       - name: Build wrasse-gpu-detect (static)
