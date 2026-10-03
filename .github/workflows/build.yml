@@ -36,6 +36,13 @@ on:
           - reimagined
           - next
           - stable
+      dx_builder:
+        description: "DX sysext builder: script (default, build-sysext.sh) or mkosi (experimental, docs/DX-SYSEXT.md)"
+        type: choice
+        default: script
+        options:
+          - script
+          - mkosi
 
 env:
   IMAGE_BASE: wrasse
@@ -99,6 +106,8 @@ jobs:
       LINE: ${{ matrix.line }}
       FLAVOR: ${{ matrix.flavor }}
       KERNEL_PIN: ${{ matrix.kernel_pin }}
+      # Only workflow_dispatch can select mkosi; every other trigger builds the sysext with the script.
+      DX_BUILDER: ${{ inputs.dx_builder || 'script' }}
 
     steps:
       - name: Checkout
@@ -173,6 +182,35 @@ jobs:
                                "${FLAVOR}" \
                                "${KERNEL_PIN}"
 
+      # DX_BUILDER=mkosi: the Containerfile left the sysext out. Build it with mkosi from the finished
+      # image's rootfs, layer it in, and retag the image so rechunk and push see it. Same fail-closed
+      # rules as the build: any failure here ends this cell before any push.
+      - name: Install mkosi
+        if: env.DX_BUILDER == 'mkosi'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y python3-venv systemd-container
+          sudo python3 -m venv /opt/mkosi-venv
+          # v26, the release Fedora 44 ships; pinned by commit.
+          sudo /opt/mkosi-venv/bin/pip install "git+https://github.com/systemd/mkosi@84af20892b61c8e177e391f997ded8b4cb5514f2"
+          sudo ln -sf /opt/mkosi-venv/bin/mkosi /usr/local/bin/mkosi
+          mkosi --version
+
+      - name: Build DX sysext with mkosi
+        if: env.DX_BUILDER == 'mkosi'
+        shell: bash
+        run: |
+          set -euo pipefail
+          start="$(date +%s)"
+          out="${RUNNER_TEMP}/dx-mkosi"
+          sudo -E build_files/dx/build-sysext-mkosi.sh "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${out}"
+          sudo podman build --build-arg "BASE=localhost/${IMAGE_NAME}:${DEFAULT_TAG}" \
+              -f build_files/dx/Containerfile.mkosi-layer \
+              --tag "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${out}"
+          echo "- DX sysext builder: mkosi, $(( $(date +%s) - start )) s (mkosi + layer)" >> "${GITHUB_STEP_SUMMARY}"
+
       # Size of the DX sysext baked into the image (Phase 3 asks for this number; it cannot
       # be known without a build). Reported only, never fails the cell.
       - name: Report DX sysext size
@@ -185,6 +223,7 @@ jobs:
           {
             echo "### DX sysext: ${LINE} ${FLAVOR}"
             echo ""
+            echo "- builder: ${DX_BUILDER}"
             echo "- wrasse-dx.raw: $(numfmt --to=iec --suffix=B "${size}") (${size} bytes)"
             echo '- extension-release:'
             echo '```'
