@@ -90,6 +90,13 @@ jobs:
           variant=iso-tooling/live/src/wrasse
           test ! -e "${variant}"
           cp -r installer/iso/variant/wrasse "${variant}"
+          # The installer copies the live system's Flatpaks to the target. The tooling's shared list is Bluefin's, so
+          # give the variant its own list, taken from the image's default Flatpaks (single source of truth).
+          grep -oP '^flatpak "\K[^"]+' system_files/shared/usr/share/ublue-os/homebrew/system-flatpaks.Brewfile > "${variant}/flatpaks"
+          test "$(wc -l < "${variant}/flatpaks")" -ge 10
+          if grep -qiE 'firefox|thunderbird|deja|FileRoller|Characters|Bluefin' "${variant}/flatpaks"; then
+            echo 'removed Flatpaks are back in the live list' >&2; exit 1
+          fi
           install -m755 installer/gpu-detect/target/x86_64-unknown-linux-musl/release/wrasse-gpu-detect "${variant}/wrasse-gpu-detect"
           for flavor in wrasse wrasse-nvidia; do
             installer/gen-catalog.sh "${flavor}" > "${variant}/images.${flavor}.json"
