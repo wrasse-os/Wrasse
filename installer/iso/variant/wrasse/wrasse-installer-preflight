@@ -25,6 +25,7 @@ set -euo pipefail
 WRASSE_MIN_RAM_KB=7000000
 
 # meminfo_total_kb [file]: MemTotal in kB, or exit 1 when unreadable or not a number.
+# shellcheck disable=SC2120
 meminfo_total_kb() {
     local file="${1:-${WRASSE_MEMINFO:-/proc/meminfo}}" kb
     kb="$(awk '$1 == "MemTotal:" { print $2; exit }' "${file}" 2>/dev/null)" || return 1
@@ -38,6 +39,7 @@ ram_sufficient() {
 }
 
 # ignore_ram_requested [cmdline file]: success when wrasse.ignore_ram=1 is a whole word on the command line.
+# shellcheck disable=SC2120
 ignore_ram_requested() {
     local file="${1:-${WRASSE_CMDLINE:-/proc/cmdline}}" word
     # shellcheck disable=SC2046
@@ -79,6 +81,7 @@ show_message() {
 }
 
 # has_default_route [route file]: success when the kernel has an IPv4 default route (destination 00000000).
+# shellcheck disable=SC2120
 has_default_route() {
     local file="${1:-${WRASSE_NETROUTE:-/proc/net/route}}"
     awk 'NR > 1 && $2 == "00000000" { found = 1 } END { exit !found }' "${file}" 2>/dev/null
