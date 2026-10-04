@@ -38,7 +38,7 @@
       "type": "os",
       "key": "󱍢",
       "keyColor": "#57a0c6",
-      "format": "{pretty-name}"
+      "format": "{name} {version-id}"
     },
     {
       "type": "kernel",

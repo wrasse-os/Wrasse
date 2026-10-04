@@ -269,3 +269,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **DX publish read-back**: point the shipped DX trust policy at the repo copy of the Wrasse public key on the runner (the on-image path does not exist there). The artifact itself was already pushed and signed; only the read-back failed.
 
 - **Live ISO Flatpaks**: the installer copies the live system's Flatpaks to the target, and the ISO tooling's shared list is Bluefin's (Firefox-era set incl. DejaDup, File Roller, Characters). The Wrasse variant now supplies its own list, generated at ISO build time from the image's `system-flatpaks.Brewfile`, and the build fails if removed apps come back.
+
+- **os-release PRETTY_NAME is just "Wrasse"** (no version suffix): GNOME Shell's welcome dialog after first sign-in reads "Welcome to %s" from PRETTY_NAME, so it now says "Welcome to Wrasse". The version stays in VERSION / VERSION_ID / IMAGE_VERSION; fastfetch shows `{name} {version-id}`.

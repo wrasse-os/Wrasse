@@ -86,6 +86,8 @@ if [[ "${IMAGE_NAME}" =~ nvidia ]]; then
 fi
 
 test -f /usr/share/icons/Bibata-Modern-Classic/cursor.theme
+# GNOME Shell's first-login welcome dialog reads "Welcome to %s" from PRETTY_NAME.
+grep -qx 'PRETTY_NAME="Wrasse"' /usr/lib/os-release
 
 # Claude Code integration: the lazy stub, the agent memory slice, the skill and the PATH snippets.
 test -x /usr/bin/claude
