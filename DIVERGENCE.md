@@ -265,3 +265,5 @@ One short entry per change: what and why. Grouped by area. Detail on decisions a
 - **Docs for installer requirements**: `docs/INSTALL.md` and `installer/README.md` state the minimums (8 GB RAM, 25 GB disk, network and the ~5 GB download), the `wrasse.ignore_ram=1` escape hatch and the connection check. Why: the RAM check and the connectivity step are new and the 25 GB disk floor was undocumented.
 
 - **No-network message**: the live installer wrapper waits up to 8 s for a default route and, if none, shows how to get online (Ethernet, phone USB tethering, Wi-Fi from the system menu) before starting the installer. The installer's own connection check stays the gate; Wi-Fi is not required.
+
+- **DX publish read-back**: point the shipped DX trust policy at the repo copy of the Wrasse public key on the runner (the on-image path does not exist there). The artifact itself was already pushed and signed; only the read-back failed.

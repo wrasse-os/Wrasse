@@ -56,7 +56,10 @@ oras tag "${repo}@${digest}" "${image_id}-${line}" "${image_id}-f${fedora}"
 policy_dir="system_files/shared/usr/share/wrasse/dx"
 check="$(mktemp -d)"
 trap 'rm -rf "${check}"' EXIT
-skopeo --policy "${policy_dir}/policy.json" --registries.d "${policy_dir}/registries.d" \
+# The shipped policy names the key at its on-image path (/usr/lib/pki/containers/wrasse.pub), which does not exist
+# on the runner: point the same policy at the repository's copy of the key (identical to the image's).
+jq --arg key "$(pwd)/cosign.pub" '(.. | objects | select(has("keyPath")) | .keyPath) = $key' "${policy_dir}/policy.json" > "${check}/policy.json"
+skopeo --policy "${check}/policy.json" --registries.d "${policy_dir}/registries.d" \
     copy --retry-times 3 "docker://${repo}:${tag}" "dir:${check}/art"
 [[ "$(jq -r '.annotations["io.wrasse.dx.image-version"]' "${check}/art/manifest.json")" == "${image_version}" ]]
 raw_blob="$(jq -r '.layers[] | select(.annotations["org.opencontainers.image.title"] == "wrasse-dx.raw") | .digest' "${check}/art/manifest.json")"
