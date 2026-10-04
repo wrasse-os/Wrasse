@@ -61,7 +61,7 @@ dnf5 -y download --resolve --enablerepo=code --arch=noarch --arch="${arch}" \
 echo "Extracting RPMs"
 cd "${ROOTFS}"
 for rpm in "${RPMS}"/*.rpm; do
-    rpm2cpio "${rpm}" | cpio -idm --quiet
+    rpm2cpio "${rpm}" | cpio -idmu --quiet
 done
 
 # Overlay files shipped by Wrasse (sysctl, modules-load, tmpfiles, units, VS Code hook).
